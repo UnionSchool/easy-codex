@@ -15,3 +15,5 @@
 - `native/Overlay.swift` 使用 Swift 6 / AppKit / CoreGraphics；`npm run build:overlay` 构建 macOS 14+ 的 arm64/x86_64 通用应用并执行颜色、坐标自检。Node 查询投影在 `src/overlay-data.js`，子进程入口在 `src/overlay-query.js`。
 - 跟随窗口边界，不把固定偏移称为头像识别。仅显示 CLI 登录账号额度，不能宣称已核对桌面账号。
 - 包中包含通用原生构建；更新需重建再安装。数据过期、未知和查询失败要明确呈现，退出应取消在途查询。
+
+- 用户安装与使用保持极简：`npm i -g easy-codex` 后运行 `easy-codex`；浮窗为可选 `easy-codex overlay`。发布包应自带原生构建，用户无需编译。easy use 是易用理念，不是命令别名。

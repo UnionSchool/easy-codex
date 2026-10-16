@@ -46,8 +46,8 @@ func appKitRect(_ rect: CGRect, primaryHeight: CGFloat) -> CGRect {
     CGRect(x: rect.minX, y: primaryHeight - rect.maxY, width: rect.width, height: rect.height)
 }
 func ringOrigin(in rect: CGRect, inset: CGPoint) -> CGPoint {
-    CGPoint(x: max(rect.minX, min(rect.maxX - 68, rect.maxX - 68 - inset.x)),
-            y: max(rect.minY, min(rect.maxY - 68, rect.minY + inset.y)))
+    CGPoint(x: max(rect.minX, min(rect.maxX - 16, rect.maxX - 16 - inset.x)),
+            y: max(rect.minY, min(rect.maxY - 16, rect.minY + inset.y)))
 }
 
 @MainActor
@@ -80,29 +80,29 @@ final class RingView: NSView {
     private var originStart = CGPoint.zero
 
     override func draw(_ dirtyRect: NSRect) {
-        let center = CGPoint(x: bounds.midX, y: 34)
-        let track = NSBezierPath(ovalIn: CGRect(x: center.x - 23, y: center.y - 23, width: 46, height: 46))
-        track.lineWidth = 4
+        let center = CGPoint(x: bounds.midX, y: bounds.midY)
+        let track = NSBezierPath(ovalIn: CGRect(x: center.x - 7, y: center.y - 7, width: 14, height: 14))
+        track.lineWidth = 1
         NSColor.labelColor.withAlphaComponent(0.12).setStroke()
         track.stroke()
         let state = RingState.resolve(remaining, stale: stale)
         if let remaining, remaining > 0, !stale {
             let arc = NSBezierPath()
-            arc.lineWidth = 4
+            arc.lineWidth = 1
             arc.lineCapStyle = .round
-            arc.appendArc(withCenter: center, radius: 23, startAngle: 90,
+            arc.appendArc(withCenter: center, radius: 7, startAngle: 90,
                           endAngle: 90 - CGFloat(min(100, max(0, remaining))) * 3.6, clockwise: true)
             state.color.setStroke()
             arc.stroke()
         }
         let text = remaining.map { "\(Int($0.rounded()))%" } ?? "—"
-        drawText(text, y: 24, font: .monospacedDigitSystemFont(ofSize: 15, weight: .semibold), color: state.color)
+        drawText(text, y: 5, font: .monospacedDigitSystemFont(ofSize: 4.5, weight: .semibold), color: state.color)
     }
     private func drawText(_ text: String, y: CGFloat, font: NSFont, color: NSColor) {
         let style = NSMutableParagraphStyle()
         style.alignment = .center
         style.lineBreakMode = .byTruncatingTail
-        (text as NSString).draw(in: CGRect(x: 4, y: y, width: bounds.width - 8, height: 20),
+        (text as NSString).draw(in: CGRect(x: 1, y: y, width: bounds.width - 2, height: 6),
                                withAttributes: [.font: font, .foregroundColor: color, .paragraphStyle: style])
     }
     override func mouseDown(with event: NSEvent) {
@@ -127,9 +127,9 @@ final class RingView: NSView {
 
 @MainActor
 final class Overlay: NSObject, NSApplicationDelegate, NSMenuDelegate {
-    let panel = NSPanel(contentRect: CGRect(x: 0, y: 0, width: 68, height: 68),
+    let panel = NSPanel(contentRect: CGRect(x: 0, y: 0, width: 16, height: 16),
                         styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
-    let ring = RingView(frame: CGRect(x: 0, y: 0, width: 68, height: 68))
+    let ring = RingView(frame: CGRect(x: 0, y: 0, width: 16, height: 16))
     var status: NSStatusItem?
     var timer: Timer?
     var query: Process?
@@ -165,7 +165,7 @@ final class Overlay: NSObject, NSApplicationDelegate, NSMenuDelegate {
         ring.refresh = { [weak self] in self?.refresh() }
         ring.moved = { [weak self] point in
             guard let self, let rect = self.lastRect else { return }
-            self.inset = CGPoint(x: rect.maxX - point.x - 68, y: point.y - rect.minY)
+            self.inset = CGPoint(x: rect.maxX - point.x - 16, y: point.y - rect.minY)
             prefs.set(self.inset.x, forKey: "rightInset")
             prefs.set(self.inset.y, forKey: "bottomInset")
         }
@@ -299,8 +299,8 @@ struct Main {
             assert(RingState.resolve(99, stale: true) == .unknown)
             assert(appKitRect(CGRect(x: -900, y: 100, width: 800, height: 600), primaryHeight: 900).origin == CGPoint(x: -900, y: 200))
             let bounds = CGRect(x: 100, y: 100, width: 800, height: 600)
-            assert(ringOrigin(in: bounds, inset: CGPoint(x: 10, y: 74)) == CGPoint(x: 822, y: 174))
-            assert(ringOrigin(in: bounds, inset: CGPoint(x: -100, y: -100)) == CGPoint(x: 832, y: 100))
+            assert(ringOrigin(in: bounds, inset: CGPoint(x: 10, y: 74)) == CGPoint(x: 874, y: 174))
+            assert(ringOrigin(in: bounds, inset: CGPoint(x: -100, y: -100)) == CGPoint(x: 884, y: 100))
             print("Swift 圆环颜色与窗口坐标检查通过")
             return
         }
@@ -318,7 +318,7 @@ struct Main {
                 NSGraphicsContext.saveGraphicsState()
                 let transform = AffineTransform(translationByX: CGFloat(index * 84 + 4), byY: 8)
                 (transform as NSAffineTransform).concat()
-                let view = RingView(frame: CGRect(x: 0, y: 0, width: 68, height: 68))
+                let view = RingView(frame: CGRect(x: 0, y: 0, width: 16, height: 16))
                 view.remaining = value < 0 ? nil : value; view.stale = value < 0
                 view.caption = value < 0 ? "额度未知" : "7天"
                 view.draw(view.bounds)
