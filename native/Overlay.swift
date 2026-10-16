@@ -46,7 +46,7 @@ func appKitRect(_ rect: CGRect, primaryHeight: CGFloat) -> CGRect {
     CGRect(x: rect.minX, y: primaryHeight - rect.maxY, width: rect.width, height: rect.height)
 }
 func ringOrigin(in rect: CGRect, inset: CGPoint) -> CGPoint {
-    CGPoint(x: max(rect.minX, min(rect.maxX - 32, rect.maxX - 32 - inset.x)),
+    CGPoint(x: max(rect.minX, min(rect.maxX - 32, rect.minX + inset.x)),
             y: max(rect.minY, min(rect.maxY - 32, rect.minY + inset.y)))
 }
 
@@ -150,8 +150,8 @@ final class Overlay: NSObject, NSApplicationDelegate, NSMenuDelegate {
         node = args[1]; script = args[2]; searchPath = args[3]
         codexHome = args.count > 4 ? args[4] : ""
         let prefs = UserDefaults.standard
-        if prefs.object(forKey: "rightInset") != nil {
-            inset = CGPoint(x: prefs.double(forKey: "rightInset"), y: prefs.double(forKey: "bottomInset"))
+        if prefs.object(forKey: "leftInset") != nil {
+            inset = CGPoint(x: prefs.double(forKey: "leftInset"), y: prefs.double(forKey: "bottomInset"))
         }
         selectedID = prefs.string(forKey: "selectedWindow")
         panel.isOpaque = false
@@ -165,8 +165,8 @@ final class Overlay: NSObject, NSApplicationDelegate, NSMenuDelegate {
         ring.refresh = { [weak self] in self?.refresh() }
         ring.moved = { [weak self] point in
             guard let self, let rect = self.lastRect else { return }
-            self.inset = CGPoint(x: rect.maxX - point.x - 32, y: point.y - rect.minY)
-            prefs.set(self.inset.x, forKey: "rightInset")
+            self.inset = CGPoint(x: point.x - rect.minX, y: point.y - rect.minY)
+            prefs.set(self.inset.x, forKey: "leftInset")
             prefs.set(self.inset.y, forKey: "bottomInset")
         }
         ring.setAccessibilityElement(true)
@@ -275,7 +275,7 @@ final class Overlay: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
     @objc func resetPosition() {
         inset = CGPoint(x: 10, y: 74)
-        UserDefaults.standard.removeObject(forKey: "rightInset")
+        UserDefaults.standard.removeObject(forKey: "leftInset")
         UserDefaults.standard.removeObject(forKey: "bottomInset")
         tick()
     }
@@ -299,8 +299,9 @@ struct Main {
             assert(RingState.resolve(99, stale: true) == .unknown)
             assert(appKitRect(CGRect(x: -900, y: 100, width: 800, height: 600), primaryHeight: 900).origin == CGPoint(x: -900, y: 200))
             let bounds = CGRect(x: 100, y: 100, width: 800, height: 600)
-            assert(ringOrigin(in: bounds, inset: CGPoint(x: 10, y: 74)) == CGPoint(x: 858, y: 174))
-            assert(ringOrigin(in: bounds, inset: CGPoint(x: -100, y: -100)) == CGPoint(x: 868, y: 100))
+            assert(ringOrigin(in: bounds, inset: CGPoint(x: 10, y: 74)) == CGPoint(x: 110, y: 174))
+            assert(ringOrigin(in: bounds, inset: CGPoint(x: -100, y: -100)) == CGPoint(x: 100, y: 100))
+            assert(ringOrigin(in: bounds, inset: CGPoint(x: 9999, y: 9999)) == CGPoint(x: 868, y: 668))
             print("Swift 圆环颜色与窗口坐标检查通过")
             return
         }

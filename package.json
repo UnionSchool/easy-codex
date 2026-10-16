@@ -1,6 +1,6 @@
 {
   "name": "easy-codex",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Display remaining Codex account usage limits",
   "type": "module",
   "bin": {
