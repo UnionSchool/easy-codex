@@ -1,0 +1,39 @@
+{
+  "name": "easy-codex",
+  "version": "0.1.0",
+  "description": "Display remaining Codex account usage limits",
+  "type": "module",
+  "bin": {
+    "easy-codex": "bin/easy-codex.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md",
+    "native/Overlay.swift",
+    "native/build/EasyCodexOverlay.app",
+    "scripts/build-overlay.mjs"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test",
+    "start": "node bin/easy-codex.js",
+    "build:overlay": "node scripts/build-overlay.mjs"
+  },
+  "license": "MIT",
+  "author": "UnionSchool",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/UnionSchool/easy-codex.git"
+  },
+  "homepage": "https://github.com/UnionSchool/easy-codex#readme",
+  "bugs": {
+    "url": "https://github.com/UnionSchool/easy-codex/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  }
+}

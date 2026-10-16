@@ -1,0 +1,76 @@
+# easy-codex
+
+显示当前本机 Codex 登录账号的剩余额度百分比和重置时间。第三方辅助工具，与 OpenAI 无官方隶属关系。
+
+无作用域 npm 包名：`easy-codex`。
+
+```sh
+npm install -g easy-codex
+easy-codex
+easy-codex overlay
+```
+
+## 使用
+
+需要 Node.js 22+、PATH 中的官方 `codex` CLI，以及已通过 `codex login` 登录的 ChatGPT 账号。无需安装 npm 依赖。
+
+在本项目目录运行：
+
+```sh
+node bin/easy-codex.js
+node bin/easy-codex.js usage
+node bin/easy-codex.js --help
+```
+
+输出每个额度桶的主、次窗口。窗口时长采用服务端数据，重置时间使用本机时区。剩余比例为 `100 - usedPercent`，限制在 0–100%；未返回的字段显示“未知”。额度属于账号，不是当前会话的 Token 数，也不是 API 账单余额。即使有剩余百分比，也不代表其他服务端限制已解除。
+
+## 数据与限制
+
+通过官方 [App Server 协议](https://developers.openai.com/codex/app-server) 启动 `codex app-server --listen stdio://`，完成握手后调用 `account/rateLimits/read`，随后关闭本工具启动的进程。优先读取多额度桶，兼容单额度桶。
+
+本工具不读取或保存凭据，不创建聊天、不发送模型请求、不购买额度、不消耗额度重置券。认证及必要的登录状态刷新由官方 CLI 处理，CLI 本身可能写入其运行日志。为避免敏感信息外泄，本工具不直接输出子进程日志及原始服务端错误。
+
+查询总超时为 20 秒；失败返回非零退出码。找不到 CLI 时检查安装及 PATH；读取失败时检查 `codex login`、网络和 CLI 版本。仅安装桌面应用但没有可执行的 `codex` CLI 时无法使用。不同 CLI 版本的协议兼容性需实测。
+
+## 开发
+
+```sh
+npm test
+```
+
+使用 Node.js 内置测试工具，覆盖格式化和模拟 App Server 通信，不依赖真实账号或网络。真实账号查询需单独执行上述命令。浮窗使用同一数据源；暂不提供多账号管理或自动安装官方 CLI。
+
+## macOS 额度浮窗
+
+macOS 14+ 安装后运行：
+
+```sh
+easy-codex overlay
+```
+
+独立 AppKit 浮窗在 Codex 位于前台时显示，切到其他应用、最小化或关闭 Codex 窗口后隐藏。默认位于 Codex 窗口右下角上方；拖动可校准位置，偏移量保存在本机。它按窗口边界跟随，不自动识别头像；侧栏布局变化后可再次拖动。首版跟随最前面的一个 Codex 普通窗口。
+
+- 圆环长度表示剩余百分比：大于 50% 绿色，20%–50% 橙色，低于 20% 红色。
+- 浮窗背景透明，无底板和阴影。圆环只显示百分比，无数据时显示 `—`，不显示窗口时长或状态文字；时长与状态见悬停提示和菜单。
+- 未知或过期数据为灰色；失败后的过期说明见悬停提示。已到重置时间时也先标为过期，等待重新查询，不擅自恢复满额。
+- 浮窗可见时每 60 秒刷新，查询不会重叠；回到前台且距离上次查询超过 60 秒会刷新。
+- 默认优先 codex 额度桶，显示其中剩余比例最低的窗口；右键可切换其他窗口，不把各窗口相加。
+- 悬停查看额度详情与更新时间；双击刷新；右键或菜单栏 **EC** 可立即刷新、恢复默认位置、退出。
+- 这是 **CLI 登录账号** 的额度，不自动确认桌面端正在使用同一账号。切换账号后请核对并手动刷新。
+
+浮窗不修改官方应用，不读取界面文字、不截图、不请求辅助功能权限，不自动开机启动。位置与选择保存在 `com.unionschool.easy-codex.overlay` 的用户偏好中，不保存额度历史或凭据。系统窗口接口只用于查询窗口边界及前台状态。
+
+本地构建需要 Xcode Command Line Tools 与 Swift 6；构建包含 Apple Silicon 和 Intel 的通用应用：
+
+```sh
+npm run build:overlay
+node bin/easy-codex.js overlay
+```
+
+构建输出为 `native/build/EasyCodexOverlay.app`，使用本地 ad-hoc 签名，尚未做开发者签名或公证。全局安装的是快照，源码修改后需重建、打包并重新安装；升级前通过 EC 菜单退出旧浮窗。浮窗仅支持 macOS 14+；未做开发者签名或公证，系统策略可能阻止启动。
+
+## 发布
+
+GitHub Actions 在 `v*` 标签上测试、构建通用 macOS 浮窗，并发布 npm 包。标签必须与 package.json 版本一致；预发布版本使用 `next`，正式版本使用 `latest`。发布任务使用 GitHub `npm` Environment，部署记录链接到 npm 包。
+
+首次发布需配置仓库 Secret `NPM_TOKEN`（具有该包发布权限、允许自动化发布的 npm Token）。不要把凭据写入源码。修改版本后创建对应标签触发发布；失败可在 Actions 中重新运行任务。
