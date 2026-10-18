@@ -1,6 +1,6 @@
 {
   "name": "easy-codex",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "Codex usage limits and transparent world clock overlay",
   "type": "module",
   "bin": {
