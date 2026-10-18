@@ -1,7 +1,7 @@
 {
   "name": "easy-codex",
-  "version": "0.1.3",
-  "description": "Display remaining Codex account usage limits",
+  "version": "0.2.0",
+  "description": "Codex usage limits and transparent world clock overlay",
   "type": "module",
   "bin": {
     "easy-codex": "bin/easy-codex.js"

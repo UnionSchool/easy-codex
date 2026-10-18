@@ -16,6 +16,7 @@ export function overlayData(result, now = Date.now()) {
         ? mins % 1440 === 0 ? `${mins / 1440}天` : mins % 60 === 0 ? `${mins / 60}小时` : `${mins}分钟`
         : key === 'primary' ? '主窗口' : '次窗口';
       windows.push({ id: `${id}:${key}`, label,
+        windowDurationMins: Number.isFinite(mins) && mins > 0 ? mins : null,
         name: `${String(bucket.limitName || id).replace(/[\x00-\x1f\x7f-\x9f]/g, '')} · ${label}`,
         remaining: Number.isFinite(w.usedPercent) ? Math.max(0, Math.min(100, 100 - w.usedPercent)) : null,
         resetsAt: Number.isFinite(w.resetsAt) && Math.abs(w.resetsAt) < 8.64e12 ? w.resetsAt : null });

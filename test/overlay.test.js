@@ -11,7 +11,7 @@ test('浮窗保留独立额度窗口与时间，不混合不同桶', () => {
   assert.equal(result.fetchedAt, 1);
   assert.equal(result.restricted, true);
   assert.equal(result.windows.length, 3);
-  assert.deepEqual(result.windows[0], { id: 'codex:primary', label: '7天', name: 'codex · 7天', remaining: 55, resetsAt: 1800000000 });
+  assert.deepEqual(result.windows[0], { id: 'codex:primary', label: '7天', windowDurationMins: 10080, name: 'codex · 7天', remaining: 55, resetsAt: 1800000000 });
   assert.equal(result.windows[1].remaining, null);
   assert.equal(result.windows[2].remaining, 0);
   assert.equal(result.windows[2].label, '5小时');
