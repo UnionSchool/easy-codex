@@ -1,6 +1,6 @@
 {
   "name": "easy-codex",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Codex usage limits and transparent world clock overlay",
   "type": "module",
   "bin": {
@@ -12,7 +12,8 @@
     "README.md",
     "native/Overlay.swift",
     "native/build/EasyCodexOverlay.app",
-    "scripts/build-overlay.mjs"
+    "scripts/build-overlay.mjs",
+    "CHANGELOG.md"
   ],
   "engines": {
     "node": ">=22"
