@@ -161,6 +161,29 @@ struct ClockCity {
     ]
 }
 
+func resetDescription(_ resetsAt: Double?, weekly: Bool, now: Date = Date(), zone: TimeZone = .current) -> String {
+    guard let resetsAt, resetsAt.isFinite, abs(resetsAt) < 8.64e12 else { return "重置时间未知" }
+    let remaining = resetsAt - now.timeIntervalSince1970
+    guard remaining > 0 else { return "已到重置时间，等待更新" }
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "zh_CN")
+    formatter.timeZone = zone
+    formatter.dateFormat = weekly ? "d'日' HH:mm" : "HH:mm"
+    let time = formatter.string(from: Date(timeIntervalSince1970: resetsAt))
+    let duration: String
+    if weekly {
+        if remaining >= 86400 { duration = "\(Int(remaining / 86400))天" }
+        else if remaining >= 3600 { duration = "\(Int(remaining / 3600))小时" }
+        else { duration = "\(Int(ceil(remaining / 60)))分钟" }
+    } else {
+        let totalMinutes = Int(ceil(remaining / 60))
+        let hours = totalMinutes / 60
+        let minutes = totalMinutes % 60
+        duration = (hours > 0 ? "\(hours)小时" : "") + (minutes > 0 ? "\(minutes)分" : "")
+    }
+    return "\(duration)后 \(time) 重置"
+}
+
 func clockText(at date: Date, zone: TimeZone) -> String {
     let formatter = DateFormatter()
     formatter.locale = Locale(identifier: "en_US_POSIX")
@@ -372,15 +395,8 @@ final class Overlay: NSObject, NSApplicationDelegate, NSMenuDelegate {
             let id = minutes == 10080 ? "weekly" : "fiveHour"
             guard let window = codexWindow(snapshot?.windows ?? [], minutes: minutes) else { continue }
             let remaining = window.remaining.map { "\(Int($0.rounded()))%" } ?? "未知"
-            let reset: String
-            if let seconds = window.resetsAt {
-                let formatter = DateFormatter()
-                formatter.locale = Locale(identifier: "zh_CN")
-                formatter.timeZone = .current
-                formatter.dateFormat = "MM-dd HH:mm"
-                reset = formatter.string(from: Date(timeIntervalSince1970: seconds))
-            } else { reset = "未知" }
-            let option = item("\(label) · \(remaining) · 重置 \(reset)", #selector(selectPercentage(_:)))
+            let reset = resetDescription(window.resetsAt, weekly: minutes == 10080)
+            let option = item("\(label) · \(remaining) · \(reset)", #selector(selectPercentage(_:)))
             option.representedObject = id
             option.state = (ring.displaysWeeklyPercentage == (id == "weekly")) ? .on : .off
             menu.addItem(option)
@@ -388,7 +404,7 @@ final class Overlay: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(item(query == nil ? "立即刷新" : "正在刷新…", query == nil ? #selector(refresh) : nil))
         menu.addItem(item("恢复默认位置", #selector(resetPosition)))
         menu.addItem(.separator())
-        let toggle = item("显示电子时钟", #selector(toggleClock))
+        let toggle = item("显示时间", #selector(toggleClock))
         toggle.state = clockEnabled ? .on : .off
         menu.addItem(toggle)
         let zones = NSMenu()
@@ -399,7 +415,7 @@ final class Overlay: NSObject, NSApplicationDelegate, NSMenuDelegate {
             zones.addItem(option)
         }
         zones.addItem(item("自定义时区…", #selector(customTimeZone)))
-        let zoneItem = item("时区 · \(clock.cityName)", nil)
+        let zoneItem = item("\(clock.cityName)·\(clockText(at: Date(), zone: clock.zone))", nil)
         zoneItem.submenu = zones
         menu.addItem(zoneItem)
         menu.addItem(.separator())
@@ -479,6 +495,19 @@ struct Main {
             let otherHours = UsageWindow(id: "other:primary", label: "5小时", name: "other", remaining: 10, resetsAt: nil, windowDurationMins: 300)
             precondition(codexWindow([otherHours, weekOnly], minutes: 10080)?.remaining == 80)
             precondition(codexWindow([otherHours, weekOnly], minutes: 300) == nil)
+            let countdownStart = ISO8601DateFormatter().date(from: "2026-10-15T04:57:00Z")!
+            let countdownUTC = TimeZone(secondsFromGMT: 0)!
+            precondition(resetDescription(countdownStart.timeIntervalSince1970 + 10920, weekly: false, now: countdownStart, zone: countdownUTC) == "3小时2分后 07:59 重置")
+            let weekStart = ISO8601DateFormatter().date(from: "2026-10-14T08:03:00Z")!
+            precondition(resetDescription(weekStart.timeIntervalSince1970 + 345360, weekly: true, now: weekStart, zone: countdownUTC) == "3天后 18日 07:59 重置")
+            precondition(resetDescription(nil, weekly: true) == "重置时间未知")
+            precondition(resetDescription(countdownStart.timeIntervalSince1970, weekly: false, now: countdownStart) == "已到重置时间，等待更新")
+            precondition(resetDescription(countdownStart.timeIntervalSince1970 + 1, weekly: false, now: countdownStart, zone: countdownUTC) == "1分后 04:57 重置")
+            precondition(resetDescription(countdownStart.timeIntervalSince1970 + 86160, weekly: true, now: countdownStart, zone: countdownUTC) == "23小时后 16日 04:53 重置")
+            precondition(resetDescription(countdownStart.timeIntervalSince1970 + 120, weekly: true, now: countdownStart, zone: countdownUTC) == "2分钟后 15日 04:59 重置")
+            precondition(resetDescription(countdownStart.timeIntervalSince1970 + 86400, weekly: true, now: countdownStart, zone: countdownUTC) == "1天后 16日 04:57 重置")
+            precondition(resetDescription(countdownStart.timeIntervalSince1970 + 86399, weekly: true, now: countdownStart, zone: countdownUTC) == "23小时后 16日 04:56 重置")
+            precondition(resetDescription(countdownStart.timeIntervalSince1970 + 3599, weekly: false, now: countdownStart, zone: countdownUTC) == "1小时后 05:56 重置")
             let testRing = RingView()
             testRing.showFiveHourRing = false
             precondition(testRing.displaysWeeklyPercentage)
