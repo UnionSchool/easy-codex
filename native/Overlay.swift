@@ -240,6 +240,15 @@ final class ClockView: RingView {
     }
 }
 
+struct PublicIP: Decodable {
+    let ip: String?
+    let city: String?
+}
+func publicIPText(ip: String?, city: String?) -> String {
+    guard let ip, !ip.isEmpty else { return "IP异常" }
+    return "公网IP·\(ip)·\(city ?? "城市未知")"
+}
+
 // 只等待耗尽窗口，但确认恢复时必须同时检查所有已知窗口，缺失或未知不能报可用。
 struct AvailabilityReminder: Codable {
     var ids: [String]
@@ -280,6 +289,9 @@ final class Overlay: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUserNoti
     var clockEnabled = true
     var status: NSStatusItem?
     var timer: Timer?
+    var ipQuery: Process?
+    var ipLastAttempt = Date.distantPast
+    var ipText = "正在获取IP…"
     var query: Process?
     var updater: Process?
     var versionCheck: Process?
@@ -366,6 +378,7 @@ final class Overlay: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUserNoti
     @objc func hide() { panel.orderOut(nil); clockPanel.orderOut(nil) }
     @objc func tick() {
         checkVersionIfNeeded()
+        if Date().timeIntervalSince(ipLastAttempt) >= 300 { refreshIP() }
         if let reminder, Date().timeIntervalSince(lastAttempt) >= (Date().timeIntervalSince1970 >= reminder.due ? 60 : 300) { refresh() }
         guard let rect = targetWindow() else { hide(); lastRect = nil; return }
         lastRect = rect
@@ -441,6 +454,30 @@ final class Overlay: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUserNoti
         query = process
         do { try process.run() }
         catch { query = nil; self.error = "无法启动额度查询，请重新运行 easy-claude overlay"; updateRing() }
+    }
+    @objc func refreshIP() {
+        guard ipQuery == nil else { return }
+        ipLastAttempt = Date()
+        let process = Process(), pipe = Pipe()
+        process.executableURL = URL(fileURLWithPath: node)
+        process.arguments = [URL(fileURLWithPath: script).deletingLastPathComponent().appendingPathComponent("overlay-ip.js").path]
+        var env = ProcessInfo.processInfo.environment
+        env["PATH"] = searchPath
+        process.environment = env
+        process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
+        process.terminationHandler = { [weak self] process in
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let value = try? JSONDecoder().decode(PublicIP.self, from: data)
+            let text = publicIPText(ip: process.terminationStatus == 0 ? value?.ip : nil, city: value?.city)
+            Task { @MainActor in
+                guard let self else { return }
+                self.ipQuery = nil; self.ipText = text
+            }
+        }
+        ipQuery = process
+        do { try process.run() }
+        catch { ipQuery = nil; ipText = "IP异常" }
     }
     func saveReminder() {
         if let reminder, let data = try? JSONEncoder().encode(reminder) {
@@ -524,6 +561,9 @@ final class Overlay: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUserNoti
         menu.addItem(item(lastRect == nil ? "等待 Codex 前台窗口" : "拖动圆环可调整位置", nil))
         if let error { menu.addItem(item(error, nil)) }
         if snapshot?.restricted == true { menu.addItem(item("服务端提示：当前使用受限", nil)) }
+        let address = item(ipText, ipQuery == nil ? #selector(refreshIP) : nil)
+        address.toolTip = "点击刷新公网IP；城市为网络出口位置"
+        menu.addItem(address)
         menu.addItem(.separator())
         for (minutes, label) in [(300.0, "5小时"), (10080.0, "周")] {
             let id = minutes == 10080 ? "weekly" : "fiveHour"
@@ -754,6 +794,7 @@ final class Overlay: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUserNoti
     }
     @objc func quit() { NSApp.terminate(nil) }
     func applicationWillTerminate(_ notification: Notification) {
+        ipQuery?.terminate()
         timer?.invalidate()
         query?.terminate()
         versionCheck?.terminate()
@@ -781,6 +822,9 @@ struct Main {
         }
 
         if CommandLine.arguments.contains("--self-test") {
+            precondition(publicIPText(ip: nil, city: "City") == "IP异常")
+            precondition(publicIPText(ip: "203.0.113.1", city: nil) == "公网IP·203.0.113.1·城市未知")
+            precondition(publicIPText(ip: "203.0.113.1", city: "City") == "公网IP·203.0.113.1·City")
             func quota(_ id: String, _ remaining: Double?, _ reset: Double?) -> UsageWindow {
                 UsageWindow(id: id, label: id, name: id, remaining: remaining, resetsAt: reset, windowDurationMins: nil)
             }
