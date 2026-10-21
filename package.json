@@ -1,6 +1,6 @@
 {
   "name": "easy-codex",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "Codex usage limits and transparent world clock overlay",
   "type": "module",
   "bin": {
@@ -21,7 +21,8 @@
   "scripts": {
     "test": "node --test",
     "start": "node bin/easy-codex.js",
-    "build:overlay": "node scripts/build-overlay.mjs"
+    "build:overlay": "node scripts/build-overlay.mjs",
+    "test:native": "python3 scripts/test-native-update.py"
   },
   "license": "MIT",
   "author": "UnionSchool",

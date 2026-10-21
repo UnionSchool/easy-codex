@@ -1,10 +1,12 @@
 import { pathToFileURL } from 'node:url';
 import { updatePackage } from './update.js';
+import { withUpdateLock } from './update-lock.js';
 
 export async function updateAndShow({ update = updatePackage,
-  show = async () => (await import('./overlay.js')).launchOverlay() } = {}) {
-  await update('easy-codex');
-  await show();
+  show = async () => (await import('./overlay.js')).launchOverlay(), lock = withUpdateLock } = {}) {
+  await lock(async () => {
+    if (await update('easy-codex')) await show();
+  });
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
