@@ -204,6 +204,19 @@ func clockText(at date: Date, zone: TimeZone, locale: Locale = .autoupdatingCurr
 }
 
 
+func floatingClockLines(at date: Date, zone: TimeZone, locale: Locale = .autoupdatingCurrent) -> (time: String, period: String?) {
+    let twelveHour = locale.hourCycle == .oneToTwelve || locale.hourCycle == .zeroToEleven
+    guard twelveHour else { return (clockText(at: date, zone: zone, locale: locale), nil) }
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.timeZone = zone
+    formatter.dateFormat = "h:mm"
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = zone
+    return (formatter.string(from: date), calendar.component(.hour, from: date) < 12 ? "上午" : "下午")
+}
+
+
 @MainActor
 func fittedClockFont(for text: String, width: CGFloat, baseSize: CGFloat) -> NSFont {
     let base = NSFont.monospacedDigitSystemFont(ofSize: baseSize, weight: .medium)
@@ -229,24 +242,36 @@ final class ClockView: RingView {
         let style = NSMutableParagraphStyle()
         style.alignment = .center
         let now = Date()
-        let time = clockText(at: now, zone: zone)
-        (time as NSString).draw(in: CGRect(x: 0, y: 17, width: bounds.width, height: 25),
-            withAttributes: [.font: fittedClockFont(for: time, width: bounds.width, baseSize: 13),
+        let lines = floatingClockLines(at: now, zone: zone)
+        let time = lines.time
+        (time as NSString).draw(in: CGRect(x: 0, y: 1, width: bounds.width, height: 28),
+            withAttributes: [.font: fittedClockFont(for: time, width: bounds.width, baseSize: 18),
                              .foregroundColor: clockState(at: now, zone: zone).color, .paragraphStyle: style])
-        let city = cityName
-        (city as NSString).draw(in: CGRect(x: 0, y: 1, width: bounds.width, height: 15),
+        let caption = lines.period ?? cityName
+        (caption as NSString).draw(in: CGRect(x: 0, y: 30, width: bounds.width, height: 15),
             withAttributes: [.font: NSFont.systemFont(ofSize: 9),
                              .foregroundColor: NSColor.secondaryLabelColor, .paragraphStyle: style])
     }
 }
 
+struct IPClockState {
+    private(set) var zone: TimeZone?
+    mutating func update(_ identifier: String?) -> Bool {
+        guard let identifier, let next = TimeZone(identifier: identifier) else { zone = nil; return false }
+        zone = next
+        return true
+    }
+    func resolved(manual: TimeZone, following: Bool) -> TimeZone { following ? zone ?? manual : manual }
+}
+
 struct PublicIP: Decodable {
     let ip: String?
     let city: String?
+    let timezone: String?
 }
 func publicIPText(ip: String?, city: String?) -> String {
     guard let ip, !ip.isEmpty else { return "IP异常" }
-    return "公网IP·\(ip)·\(city ?? "城市未知")"
+    return "\(city ?? "城市未知")·\(ip)"
 }
 
 // 只等待耗尽窗口，但确认恢复时必须同时检查所有已知窗口，缺失或未知不能报可用。
@@ -287,6 +312,10 @@ final class Overlay: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUserNoti
     let clock = ClockView(frame: CGRect(x: 0, y: 0, width: 48, height: 46))
     var clockInset = CGPoint(x: 2, y: 116)
     var clockEnabled = true
+    var followIPTimeZone = UserDefaults.standard.bool(forKey: "followIPTimeZone")
+    var ipClock = IPClockState()
+    var manualClockZone = TimeZone(identifier: "America/Los_Angeles")!
+    var manualClockCity = "硅谷"
     var status: NSStatusItem?
     var timer: Timer?
     var ipQuery: Process?
@@ -331,6 +360,8 @@ final class Overlay: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUserNoti
                 ?? ClockCity.presets.first { $0.identifier == identifier }
             clock.cityName = preset?.name ?? identifier
         }
+        manualClockZone = clock.zone; manualClockCity = clock.cityName
+        applyClockTimeZone()
         ring.showWeeklyPercentage = prefs.bool(forKey: "showWeeklyPercentage")
         clockEnabled = prefs.object(forKey: "clockEnabled") == nil || prefs.bool(forKey: "clockEnabled")
         if prefs.object(forKey: "clockLeftInset") != nil {
@@ -455,6 +486,21 @@ final class Overlay: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUserNoti
         do { try process.run() }
         catch { query = nil; self.error = "无法启动额度查询，请重新运行 easy-claude overlay"; updateRing() }
     }
+    func applyClockTimeZone() {
+        clock.zone = ipClock.resolved(manual: manualClockZone, following: followIPTimeZone)
+        clock.cityName = followIPTimeZone && ipClock.zone != nil ? "IP时区" : manualClockCity
+        clock.needsDisplay = true
+    }
+    func receiveIPTimeZone(_ identifier: String?) {
+        _ = ipClock.update(identifier)
+        applyClockTimeZone()
+    }
+    @objc func toggleFollowIPTimeZone() {
+        followIPTimeZone.toggle()
+        UserDefaults.standard.set(followIPTimeZone, forKey: "followIPTimeZone")
+        applyClockTimeZone()
+        if followIPTimeZone { refreshIP() }
+    }
     @objc func refreshIP() {
         guard ipQuery == nil else { return }
         ipLastAttempt = Date()
@@ -470,14 +516,16 @@ final class Overlay: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUserNoti
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
             let value = try? JSONDecoder().decode(PublicIP.self, from: data)
             let text = publicIPText(ip: process.terminationStatus == 0 ? value?.ip : nil, city: value?.city)
+            let timezone = process.terminationStatus == 0 ? value?.timezone : nil
             Task { @MainActor in
                 guard let self else { return }
                 self.ipQuery = nil; self.ipText = text
+                self.receiveIPTimeZone(timezone)
             }
         }
         ipQuery = process
         do { try process.run() }
-        catch { ipQuery = nil; ipText = "IP异常" }
+        catch { ipQuery = nil; ipText = "IP异常"; receiveIPTimeZone(nil) }
     }
     func saveReminder() {
         if let reminder, let data = try? JSONEncoder().encode(reminder) {
@@ -588,17 +636,25 @@ final class Overlay: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUserNoti
         let toggle = item("显示时间", #selector(toggleClock))
         toggle.state = clockEnabled ? .on : .off
         menu.addItem(toggle)
-        let zones = NSMenu()
-        for city in ClockCity.presets {
-            let option = item(city.name, #selector(selectTimeZone(_:)))
-            option.representedObject = city.name
-            option.state = clock.cityName == city.name && clock.zone.identifier == city.identifier ? .on : .off
-            zones.addItem(option)
+        let follow = item("跟随IP时区", #selector(toggleFollowIPTimeZone))
+        follow.state = followIPTimeZone ? .on : .off
+        menu.addItem(follow)
+        if followIPTimeZone && ipClock.zone == nil {
+            menu.addItem(item("IP时区不可用，显示自定义时间", nil))
         }
-        zones.addItem(item("自定义时区…", #selector(customTimeZone)))
-        let zoneItem = item("\(clock.cityName)·\(clockText(at: Date(), zone: clock.zone))", nil)
-        zoneItem.submenu = zones
-        menu.addItem(zoneItem)
+        if !followIPTimeZone {
+            let zones = NSMenu()
+            for city in ClockCity.presets {
+                let option = item(city.name, #selector(selectTimeZone(_:)))
+                option.representedObject = city.name
+                option.state = clock.cityName == city.name && clock.zone.identifier == city.identifier ? .on : .off
+                zones.addItem(option)
+            }
+            zones.addItem(item("自定义时区…", #selector(customTimeZone)))
+            let zoneItem = item("\(clock.cityName)·\(clockText(at: Date(), zone: clock.zone))", nil)
+            zoneItem.submenu = zones
+            menu.addItem(zoneItem)
+        }
         menu.addItem(.separator())
         let updateItem = item(updater == nil ? "更新版本·\(appVersion)" : "正在更新…·\(appVersion)",
                               updater == nil ? #selector(updateVersion) : nil)
@@ -639,11 +695,13 @@ final class Overlay: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUserNoti
     }
     func setTimeZone(_ identifier: String, cityName: String? = nil) -> Bool {
         guard let zone = TimeZone(identifier: identifier) else { return false }
-        clock.zone = zone
-        clock.cityName = cityName ?? ClockCity.presets.first { $0.identifier == zone.identifier }?.name ?? zone.identifier
-        UserDefaults.standard.set(clock.cityName, forKey: "clockCity")
+        manualClockZone = zone
+        manualClockCity = cityName ?? ClockCity.presets.first { $0.identifier == zone.identifier }?.name ?? zone.identifier
+        UserDefaults.standard.set(manualClockCity, forKey: "clockCity")
         UserDefaults.standard.set(zone.identifier, forKey: "clockTimeZone")
-        clock.needsDisplay = true
+        followIPTimeZone = false
+        UserDefaults.standard.set(false, forKey: "followIPTimeZone")
+        applyClockTimeZone()
         return true
     }
     @objc func selectTimeZone(_ sender: NSMenuItem) {
@@ -822,9 +880,47 @@ struct Main {
         }
 
         if CommandLine.arguments.contains("--self-test") {
+            let splitZone = TimeZone(secondsFromGMT: 0)!
+            for (hour, time, period) in [(0, "12:52", "上午"), (8, "8:52", "上午"), (12, "12:52", "下午"), (20, "8:52", "下午")] {
+                let date = Date(timeIntervalSince1970: Double(hour * 3600 + 52 * 60))
+                let lines = floatingClockLines(at: date, zone: splitZone, locale: Locale(identifier: "en_US"))
+                precondition(lines.time == time && lines.period == period)
+                let font = fittedClockFont(for: lines.time, width: 48, baseSize: 18)
+                precondition((lines.time as NSString).size(withAttributes: [.font: font]).width <= 47)
+            }
+            let split24 = floatingClockLines(at: Date(timeIntervalSince1970: 20 * 3600 + 52 * 60), zone: splitZone, locale: Locale(identifier: "en_GB"))
+            precondition(split24.time == "20:52" && split24.period == nil)
+            print("Codex浮窗两行：上午/下午小字在上、时间大字在下，菜单格式与24小时制保留")
+            let manualIPTest = TimeZone(identifier: "Asia/Shanghai")!
+            var ipClockTest = IPClockState()
+            precondition(ipClockTest.resolved(manual: manualIPTest, following: true) == manualIPTest)
+            precondition(ipClockTest.update("America/Los_Angeles"))
+            precondition(ipClockTest.resolved(manual: manualIPTest, following: true).identifier == "America/Los_Angeles")
+            precondition(ipClockTest.resolved(manual: manualIPTest, following: false) == manualIPTest)
+            precondition(!ipClockTest.update(nil) && !ipClockTest.update("Invalid/Zone"))
+            precondition(ipClockTest.zone == nil)
+            precondition(ipClockTest.resolved(manual: manualIPTest, following: true) == manualIPTest)
+            precondition(ipClockTest.update("Asia/Singapore"))
+            precondition(ipClockTest.resolved(manual: manualIPTest, following: true).identifier == "Asia/Singapore")
+            _ = NSApplication.shared
+            let clockMenuTest = Overlay()
+            clockMenuTest.manualClockZone = manualIPTest
+            clockMenuTest.manualClockCity = "上海"
+            clockMenuTest.followIPTimeZone = true
+            _ = clockMenuTest.ipClock.update("America/Los_Angeles")
+            clockMenuTest.applyClockTimeZone()
+            precondition(clockMenuTest.clock.zone.identifier == "America/Los_Angeles")
+            precondition(!clockMenuTest.makeMenu().items.contains { $0.submenu != nil })
+            clockMenuTest.receiveIPTimeZone(nil)
+            precondition(clockMenuTest.clock.zone == manualIPTest && clockMenuTest.clock.cityName == "上海")
+            precondition(clockMenuTest.followIPTimeZone)
+            clockMenuTest.followIPTimeZone = false
+            clockMenuTest.applyClockTimeZone()
+            precondition(clockMenuTest.makeMenu().items.contains { $0.submenu != nil })
+            print("跟随IP时区：开关、手动恢复、失败回退及出口变化检查通过")
             precondition(publicIPText(ip: nil, city: "City") == "IP异常")
-            precondition(publicIPText(ip: "203.0.113.1", city: nil) == "公网IP·203.0.113.1·城市未知")
-            precondition(publicIPText(ip: "203.0.113.1", city: "City") == "公网IP·203.0.113.1·City")
+            precondition(publicIPText(ip: "203.0.113.1", city: nil) == "城市未知·203.0.113.1")
+            precondition(publicIPText(ip: "203.0.113.1", city: "City") == "City·203.0.113.1")
             func quota(_ id: String, _ remaining: Double?, _ reset: Double?) -> UsageWindow {
                 UsageWindow(id: id, label: id, name: id, remaining: remaining, resetsAt: reset, windowDurationMins: nil)
             }
