@@ -32,9 +32,10 @@ test('先握手再查询，忽略通知并正常结束进程', async () => {
   const args = fakeArgs(`
     if (m.id === 1) console.log(JSON.stringify({id: 1, result: {}}));
     if (m.method === 'initialized') globalThis.ready = true;
-    if (m.id === 2 && globalThis.ready && m.method === 'account/rateLimits/read') {
+    if (m.id === 2 && m.method === 'account/read') console.log(JSON.stringify({id:2,result:{account:{type:'chatgpt'}}}));
+    if (m.id === 3 && globalThis.ready && m.method === 'account/rateLimits/read') {
       console.log(JSON.stringify({method: 'notice'}));
-      console.log(JSON.stringify({id: 2, result: ${JSON.stringify(sample)}}));
+      console.log(JSON.stringify({id: 3, result: ${JSON.stringify(sample)}}));
     }
   `);
   assert.deepEqual(await readUsage({command: process.execPath, args}), sample);
@@ -57,4 +58,16 @@ test('额度请求失败和损坏协议均明确报错', async () => {
   `);
   await assert.rejects(readUsage({command: process.execPath, args}), /无法读取额度/);
   await assert.rejects(readUsage({command: process.execPath, args: fakeArgs("console.log('not json');")}), /无效的协议/);
+});
+
+test('明确空账号才判未登录，账号查询失败仍为普通失败', async () => {
+  for (const [result, code] of [[{account:null}, 'auth_required'], [{}, undefined]]) {
+    const args = fakeArgs(`if (m.id === 1) console.log(JSON.stringify({id:1,result:{}}));if (m.id === 2) console.log(JSON.stringify({id:2,result:${JSON.stringify(result)}}));`);
+    await assert.rejects(readUsage({command:process.execPath,args}), error => error.code === code);
+  }
+});
+
+test('只按明确认证错误码判断过期，不转发原始错误', async () => {
+ const args=fakeArgs(`if(m.id===1)console.log(JSON.stringify({id:1,result:{}}));if(m.id===2)console.log(JSON.stringify({id:2,error:{message:'secret',data:{code:'token_expired'}}}));`);
+ await assert.rejects(readUsage({command:process.execPath,args}),e=>e.code==='auth_expired'&&!e.message.includes('secret'));
 });

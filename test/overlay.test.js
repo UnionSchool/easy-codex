@@ -30,3 +30,10 @@ test('退出浮窗可取消正在等待的查询', async () => {
   await assert.rejects(promise, /查询已取消/);
   await assert.rejects(readUsage({signal: controller.signal}), /查询已取消/);
 });
+
+test('认证错误码投影白名单，普通查询失败不当作未登录', async () => {
+  const {overlayError}=await import('../src/overlay-data.js');
+  for(const code of ['auth_required','auth_expired','other',undefined]) {
+    assert.deepEqual(overlayError(Object.assign(new Error('safe'),{code})),{error:'safe',errorCode:['auth_required','auth_expired'].includes(code)?code:'query_failed'});
+  }
+});

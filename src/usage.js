@@ -46,6 +46,11 @@ export function readUsage({ command = 'codex', args = ['app-server', '--listen',
       catch { finish(new Error('Codex 返回了无效的协议数据，请检查 CLI 版本。')); return; }
       if (message?.id !== expectedId) return;
       if (message.error) {
+        const authCode = message.error.data?.code ?? message.error.code;
+        if (expectedId > 1 && ['token_expired', 'refresh_token_expired', 'refresh_token_reused'].includes(authCode)) {
+          finish(Object.assign(new Error('Codex 登录已过期，请执行 codex login。'), { code: 'auth_expired' }));
+          return;
+        }
         finish(new Error(expectedId === 1
           ? 'Codex 初始化失败，请检查 CLI 版本和配置。'
           : '无法读取额度，请确认已通过 codex login 登录 ChatGPT，并检查网络；API Key 余额不在本工具范围内。'));
@@ -58,7 +63,14 @@ export function readUsage({ command = 'codex', args = ['app-server', '--listen',
       if (expectedId === 1) {
         expectedId = 2;
         send({ method: 'initialized' });
-        send({ id: 2, method: 'account/rateLimits/read' });
+        send({ id: 2, method: 'account/read', params: { refreshToken: false } });
+      } else if (expectedId === 2) {
+        if (message.result.account === null) {
+          finish(Object.assign(new Error('尚未登录 Codex，请执行 codex login。'), { code: 'auth_required' }));
+        } else if (message.result.account && typeof message.result.account === 'object') {
+          expectedId = 3;
+          send({ id: 3, method: 'account/rateLimits/read' });
+        } else finish(new Error('无法确认 Codex 账号状态，请检查 CLI 版本。'));
       } else finish(null, message.result);
     });
     send({ id: 1, method: 'initialize', params: {
