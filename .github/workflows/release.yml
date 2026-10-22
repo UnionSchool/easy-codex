@@ -2,6 +2,12 @@ name: Release npm package
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing version tag to publish'
+        required: true
+        type: string
 permissions:
   contents: read
   id-token: write
@@ -11,14 +17,18 @@ jobs:
     environment:
       name: npm
       url: https://www.npmjs.com/package/easy-codex
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
       - name: Check release version
-        run: node --input-type=module -e "import p from './package.json' with {type:'json'}; if (process.env.GITHUB_REF_NAME !== 'v' + p.version) throw new Error('Tag and package version must match');"
+        run: node --input-type=module -e "import p from './package.json' with {type:'json'}; if (process.env.RELEASE_TAG !== 'v' + p.version) throw new Error('Tag and package version must match');"
       - run: npm test
       - run: npm run build:overlay
       - run: npm run test:controls
@@ -30,7 +40,7 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          if [[ "${GITHUB_REF_NAME}" == *-* ]]; then
+          if [[ "${RELEASE_TAG}" == *-* ]]; then
             npm publish --access public --provenance --tag next
           else
             npm publish --access public --provenance
