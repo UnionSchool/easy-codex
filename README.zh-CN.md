@@ -173,3 +173,5 @@ Codex浮窗上行显示时间及右侧半字号时段，下行城市；城市宽
 默认跟随系统首选语言，中文系统显示简体中文，其余语言显示英文。展开“更多设置”后选择“语言”：跟随系统／简体中文／English；右键兼容菜单也可切换。手动选择即时生效，跨重启保留，不改变电脑语言、时区或12/24小时制。CLI沿用本工具保存的语言，也可临时设置 `EASY_LANGUAGE=en` 或 `EASY_LANGUAGE=zh`。
 
 - Codex时间浮窗：12小时制从上到下显示时段、时间、城市，时段字号减半；英文为AM/PM，24小时制不显示时段。Claude保持时段在时间右侧。
+
+[版本管理](https://github.com/UnionSchool/easy-codex/blob/main/docs/版本/README.md)
