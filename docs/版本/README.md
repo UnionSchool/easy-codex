@@ -14,8 +14,8 @@
 | package.json / 本地原生构建 | 1.0.3 / 1.0.3 |
 | GitHub标签 / Release | v1.0.3 / 已公开 |
 | npm Deployment | success |
-| npm公开registry | 等待1.0.3同步，当前latest仍1.0.2 |
-| 本机正式安装 | 1.0.2 |
+| npm公开registry | 1.0.3，gitHead与代码标签一致 |
+| 本机正式安装 | 1.0.3 |
 
 本地构建原为1.0.1，本轮已用经验证的1.0.3通用构建同步；不是只修改版本文字。发布后纯文档变更留在main，不改标签或重复发包。
 
