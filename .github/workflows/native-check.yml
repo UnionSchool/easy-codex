@@ -11,7 +11,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+      - run: npm test
       - run: npm run build:overlay
+      - run: npm run test:controls
+      - run: npm run test:lock
+      - run: npm run test:native
       - run: npm run test:reminder
       - name: Collect native diagnostics
         if: failure()
