@@ -1,5 +1,12 @@
 # 更新记录
 
+## 1.0.2
+
+- Add Chinese/English interface and CLI text, following the system by default with a saved manual language choice.
+- Use English README.md with a linked README.zh-CN.md; include both in the package.
+- Show floating time before AM/PM (Chinese day period in Chinese); suffix font is half the numeric font size. Keep the city below and preserve the system hour format.
+- Align settings row heights and vertical spacing across both languages.
+
 ## v1.0.1（2026-10-22，America/Los_Angeles）
 
 - 状态栏改为模板图标＋剩余百分比；任一已知总额度耗尽时改显示恢复倒计时，多个耗尽窗口取较晚恢复时间。重置时刻到达后先在线确认，不直接宣称恢复。

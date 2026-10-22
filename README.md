@@ -1,168 +1,103 @@
 # easy-codex
 
-显示当前本机 Codex 登录账号的剩余额度百分比和重置时间。第三方辅助工具，与 OpenAI 无官方隶属关系。
+**English** | [简体中文](README.zh-CN.md)
 
-## v1.0.1 更新说明
+A lightweight companion for Codex: read CLI account usage, show transparent usage rings and a world clock, and manage them from a native macOS menu bar panel. No model calls or changes to the official application.
 
-- 状态栏改为模板图标＋剩余百分比；任一已知总额度耗尽时改显示恢复倒计时，多个耗尽窗口取较晚恢复时间。重置时刻到达后先在线确认，不直接宣称恢复。
-- 左键打开原生控制面板。收起时仅显示额度与时间、网络出口、更多设置和退出；更多设置原位展开，屏幕高度不足时可滚动，右键保留兼容菜单。
-- 展开区集中提供显示时间、IP时区跟随、手动时区、恢复位置、一次性提醒、开机启动、自动更新及检查并更新。关闭IP时区跟随后才显示手动时区。
-- 未登录和登录过期提供对应登录命令的复制及重新检测；网络、403等查询异常独立提示，不当作耗尽。时间、IP及设置仍可使用，不自动运行登录命令。
-- 额度在后台按原频率刷新，Codex约60秒、Claude约5分钟；保留时区、位置、中心额度和所有开关设置，不替用户启用提醒、登录启动或自动更新。
+## v1.0.2 release notes
 
-历史记录见 [CHANGELOG](CHANGELOG.md)，本版开发与验收记录见 [1.0.1开发管理](https://github.com/UnionSchool/easy-codex/blob/main/docs/版本/1.0.1开发管理.md)。
+- Chinese/English UI and CLI, following the system by default; save a manual language choice in **More settings → Language**.
+- English README by default, with a linked Simplified Chinese version.
+- Time first, with a half-size period suffix (`10:09 AM` / `10:09 上午`) and the city below; preserve the system 12/24-hour format.
+- Consistent settings row heights and spacing in both languages.
 
-## 安装与使用
+[Release history](CHANGELOG.md) · [1.0.2 development and verification](https://github.com/UnionSchool/easy-codex/blob/main/docs/版本/1.0.2开发管理.md)
 
-安装一次：
+## Install and run
+
+Requires Node.js 22 or later. The transparent overlay requires macOS 14 or later; the npm package includes a universal Apple Silicon/Intel application, so no local compilation is needed.
 
 ```sh
 npm i -g easy-codex
-```
-
-查看额度：
-
-```sh
 easy-codex
-```
-
-显示透明圆环（macOS）：
-
-```sh
 easy-codex show
+easy-codex -V
 ```
 
-需要 Node.js 22+ 和已登录的官方 Codex CLI。安装包自带浮窗，使用者无需下载源码、安装依赖或编译。
+The default command prints usage. `show` closes the previous instance of this tool and opens a new one. `overlay` remains an alias. The floating clock and rings follow the official Codex desktop foreground window and hide when it is in the background; the menu bar panel remains available.
 
-输出每个额度桶的主、次窗口。窗口时长采用服务端数据，重置时间使用本机时区。剩余比例为 `100 - usedPercent`，限制在 0–100%；未返回的字段显示“未知”。额度属于账号，不是当前会话的 Token 数，也不是 API 账单余额。即使有剩余百分比，也不代表其他服务端限制已解除。
-
-## 升级与菜单
+Sign in to the official CLI with the same account you use in the desktop app:
 
 ```sh
-npm i -g easy-codex@latest
-easy-codex show
+codex login
 ```
 
-`show` 从 v0.2.1 正式提供，`overlay` 保留兼容。运行 `show` 会自动退出旧浮窗并打开新版。已保存的城市、时区、位置与显示选择会保留；“恢复默认位置”只恢复位置，不重置时区。
+CLI and desktop login are separate. This tool cannot verify that their accounts match. Missing or stale data is never treated as full or zero usage. API key balances and current conversation context are outside its scope.
 
-周额度菜单示例：`周 · 77% · 5天后 25日 06:17 重置`。周倒计时只显示最大单位；若账号返回5小时窗口，其倒计时保留时分组合，例如 `3小时2分后 07:59 重置`，不足一小时仅显示分钟。绝对重置时间按电脑系统时区，独立时间浮窗按所选城市时区。
+Usage refreshes every minute while the tool is running.
 
-时间开关为“显示时间”；城市子菜单入口如 `洛杉矶·05:23`，点号两侧无空格。只有实际返回的额度窗口才显示对应圆环和菜单项。
+## Usage rings and recovery
 
-## 数据与限制
+The outer thick ring shows weekly usage; the inner thin ring shows the five-hour window. Only windows returned by the service are shown. The center defaults to the five-hour percentage, falling back to weekly; select a quota row to change it. The center has no percent sign. Green means more than 50% remains, orange 20–50%, and red less than 20%.
 
-通过官方 [App Server 协议](https://developers.openai.com/codex/app-server) 启动 `codex app-server --listen stdio://`，完成握手后调用 `account/rateLimits/read`，随后关闭本工具启动的进程。优先读取多额度桶，兼容单额度桶。
+Multiple exhausted windows wait for the latest reset among them. Reaching that time starts an online confirmation; it does not assume the account is available. Weekly countdowns use the largest remaining unit, while five-hour countdowns show hours and minutes. Absolute reset times use the system time zone and its 12/24-hour format.
 
-本工具不读取或保存凭据，不创建聊天、不发送模型请求、不购买额度、不消耗额度重置券。认证及必要的登录状态刷新由官方 CLI 处理，CLI 本身可能写入其运行日志。为避免敏感信息外泄，本工具不直接输出子进程日志及原始服务端错误。
+## Clock and time zones
 
-查询总超时为 20 秒；失败返回非零退出码。找不到 CLI 时检查安装及 PATH；读取失败时检查 `codex login`、网络和 CLI 版本。仅安装桌面应用但没有可执行的 `codex` CLI 时无法使用。不同 CLI 版本的协议兼容性需实测。
+Drag the clock and rings independently. **Reset position** restores their defaults. Codex uses a vertical layout with the clock above the ring.
 
-## 开发
+The default city is Silicon Valley (`America/Los_Angeles`). Presets, in order: Silicon Valley, Los Angeles, Seattle, Washington, D.C., Columbus, Ohio, Singapore and Shanghai. Custom IANA time zones are supported. Daylight saving follows the selected zone; the computer time zone is never changed.
+
+The clock has no seconds and follows the system 12/24-hour format. Colors use the selected zone: red 00:00–09:00, green 09:00–18:00, orange 18:00–24:00. Midnight remains `00:mm` in 12-hour mode. Chinese uses five day-period labels; English uses AM/PM. In the floating clock, time comes first (`10:09 AM`), with the period at half the numeric font size; the city remains below. The city below the clock fits within the time's width.
+
+## Interface language
+
+The interface defaults to the first system language: Chinese becomes Simplified Chinese; other languages use English. Open **More settings → Language** and select **System default**, **简体中文**, or **English**. The right-click menu also provides this choice. Manual selection applies immediately and survives restarts without changing other settings.
+
+The CLI uses the same saved preference. `EASY_LANGUAGE=en` or `EASY_LANGUAGE=zh` temporarily overrides CLI language. Language does not change the computer's region, time zone or hour format.
+
+## Network exit and IP time zone
+
+A single request to `https://ipinfo.io/json` reads the public IP, city and IANA time zone. The panel displays `City·IP`, refreshing at startup, every five minutes or on demand. A failed lookup shows an explicit error rather than an old IP. IP history is not saved.
+
+**Follow IP time zone** is off by default. Enable it to hide manual zone choices and use the validated IP time zone and returned city. Failed lookups temporarily restore the saved manual time; successful lookups resume following. Disable it to restore manual choices. Proxy routing can make this exit differ from AI traffic; geolocation may be inaccurate or rate-limited.
+
+## Availability alert
+
+Enable **Usage available alert** while a known quota is exhausted and has a valid reset time. It waits for all exhausted windows, checks online, sends one system notification with sound after availability is confirmed, then turns itself off. Unknown data, restrictions and request failures do not trigger a success notification.
+
+The alert survives restarts and can be cancelled. The tool must be running; sleep delays checks until wake. Notification permissions, Focus and system sound settings control delivery. Enabling the alert requests permission; it is never enabled automatically.
+
+## Updates and launch at login
 
 ```sh
-node bin/easy-codex.js
+easy-codex update
+```
+
+The CLI and **Check for updates** share the same update path. A newer official npm release is installed at the existing prefix and automatically reopened. An already-current version is not reinstalled or restarted. If an older version has no `update` command, use `npm i -g easy-codex@latest`.
+
+Version checks run once a day while the tool is running; a green dot indicates an available update. **Automatic updates** is off by default. Enable it to install confirmed new versions and reopen automatically. Update failures are shown; no `sudo` is used. A kernel lock prevents concurrent installs and is released after a crash when the remaining install processes exit.
+
+**Launch at login** is off by default. Enabling it creates only this tool's user LaunchAgent and runs `show` when that macOS user signs in. Disabling removes that entry without closing the current overlay. It does not start the official app. After moving or removing Node/npm, reopen from the new installation and toggle this option off/on to refresh the saved path. System background-item permission may be required.
+
+## Data and security boundaries
+
+Usage comes from the official Codex App Server initialize/account-read/rate-limit protocol. Authentication remains with the official CLI; this tool does not read credential files or create model sessions.
+
+Network requests respect existing HTTPS/ALL proxy configuration or the macOS system HTTPS proxy; without a proxy they connect directly. TLS validation stays enabled and credential-bearing requests do not follow redirects. No desktop chats or screenshots are read; overlay positioning uses window bounds rather than avatar recognition.
+
+## Development and publishing
+
+```sh
 npm test
-```
-
-使用 Node.js 内置测试工具，覆盖格式化和模拟 App Server 通信，不依赖真实账号或网络。真实账号查询需单独执行上述命令。浮窗使用同一数据源；暂不提供多账号管理或自动安装官方 CLI。
-
-## macOS 额度浮窗
-
-macOS 14+ 安装后运行：
-
-```sh
-easy-codex show
-```
-
-独立 AppKit 浮窗在 Codex 位于前台时显示，切到其他应用、最小化或关闭 Codex 窗口后隐藏。默认位于 Codex 窗口左下角头像上方；拖动可校准位置，偏移量保存在本机。它按窗口边界跟随，不自动识别头像；侧栏布局变化后可再次拖动。首版跟随最前面的一个 Codex 普通窗口。
-
-- 圆环长度表示剩余百分比：大于 50% 绿色，20%–50% 橙色，低于 20% 红色。
-- 浮窗为头像大小（32×32），背景透明，无底板和阴影。圆环只显示剩余数字，不带 %，无数据时显示 `—`，不显示窗口时长或状态文字；时长与状态见悬停提示和菜单。
-- 未知或过期数据为灰色；失败后的过期说明见悬停提示。已到重置时间时也先标为过期，等待重新查询，不擅自恢复满额。
-- 浮窗可见时每 60 秒刷新，查询不会重叠；回到前台且距离上次查询超过 60 秒会刷新。
-- 按服务端真实时长识别窗口并优先 codex 桶，不跨桶拼接：只有周额度时显示单周环和周剩余数字，不显示不存在的5小时项；两项都有时周外粗环、5小时内细环，均为实线剩余弧。菜单切换中心数字，显示本地时区重置时间。
-- 悬停查看额度详情与更新时间；双击刷新；右键或菜单栏 **EC** 可立即刷新、恢复默认位置、退出。
-- 这是 **CLI 登录账号** 的额度，不自动确认桌面端正在使用同一账号。切换账号后请核对并手动刷新。
-
-浮窗不修改官方应用，不读取界面文字、不截图、不请求辅助功能权限，不自动开机启动。位置与选择保存在 `com.unionschool.easy-codex.overlay` 的用户偏好中，不保存额度历史或凭据。系统窗口接口只用于查询窗口边界及前台状态。
-
-本地构建需要 Xcode Command Line Tools 与 Swift 6；构建包含 Apple Silicon 和 Intel 的通用应用：
-
-```sh
 npm run build:overlay
-node bin/easy-codex.js overlay
+npm run test:controls
 ```
 
-构建输出为 `native/build/EasyCodexOverlay.app`，使用本地 ad-hoc 签名，尚未做开发者签名或公证。全局安装的是快照，源码修改后需重建、打包并重新安装；升级前通过 EC 菜单退出旧浮窗。浮窗仅支持 macOS 14+；未做开发者签名或公证，系统策略可能阻止启动。
+Building requires Swift 6 and Xcode Command Line Tools. The packaged app is ad-hoc signed, not developer-notarized. UI tests use isolated preferences and simulated responses, without model calls.
 
-## 发布
+A matching `v<version>` tag triggers GitHub Actions validation, universal build and npm publication. Stable releases use `latest`; prereleases use `next`. The `npm` environment exposes deployment status on GitHub. Publishing credentials are stored only in GitHub Actions secrets. A successful workflow is followed by registry and public-install verification.
 
-GitHub Actions 在 `v*` 标签上测试、构建通用 macOS 浮窗，并发布 npm 包。标签必须与 package.json 版本一致；预发布版本使用 `next`，正式版本使用 `latest`。发布任务使用 GitHub `npm` Environment，部署记录链接到 npm 包。
+## Known limits
 
-首次发布需配置仓库 Secret `NPM_TOKEN`（具有该包发布权限、允许自动化发布的 npm Token）。不要把凭据写入源码。修改版本后创建对应标签触发发布；失败可在 Actions 中重新运行任务。
-
-## 电子时钟
-
-透明时钟位于圆环上方，竖排居中，默认间距10px，可独立拖动。默认硅谷，城市顺序为硅谷、洛杉矶、西雅图、华盛顿特区、哥伦布（俄亥俄州）、新加坡、上海，也可自定义 IANA 时区；设置自动保存。仅显示时分，按目标当地时间00–09红色、09–18绿色、18–24橙色，自动处理夏令时，不修改电脑系统时区。菜单“恢复默认位置”应用竖排默认布局；已有拖动位置继续保留。
-
-
-
-浮窗使用 `easy-codex show` 启动；原 `overlay` 命令保留兼容。
-
-周倒计时只显示最大单位，例如“6天后 25日 06:17 重置”，不足一天按小时、不足一小时按分钟。5小时窗口保留时分组合，例如“3小时2分后 07:59 重置”，没有小时则“22分后 07:59 重置”，省略为零的单位。绝对重置时刻使用电脑本地时区；周含日，5小时不含日期。
-
-
-命令更新：`easy-codex update`，成功后会自动退出旧浮窗并打开新版。旧版本尚未提供 update 时，可先执行 `npm i -g easy-codex@latest`。更新过程中需要正常网络及原安装目录写入权限，不会自动使用 sudo。
-
-菜单中的“更新版本”会后台检查并更新，成功后自动重开浮窗；失败时保留当前浮窗并提示原因。更新期间不能重复点击，已保存设置保持不变。
-
-更新前会在线核对版本；已经是最新版本时只提示，不重复安装或重开浮窗。有更高正式版本并安装成功后，才自动重开。
-
-额度菜单的重置时刻跟随系统的12/24小时制和AM/PM格式，时区仍使用电脑系统时区。
-
-菜单“自动更新”默认关闭，开启后在浮窗运行期间每天检查一次，有新正式版本时自动安装并重开，保留设置；关闭后仍每天检查并显示新版提示，但不自动安装。开启时如已发现新版，会立即更新。自动更新失败仅在菜单提示，可点击“更新版本”查看原因或重试。
-
-更新锁恢复：异常强退后自动释放；安装仍在运行时继续阻止并发更新，安装结束即可重试，无需手动清理旧锁。
-
-## 额度可用提醒
-
-在状态栏图标 或浮窗右键菜单开启“额度可用提醒”。首次开启需允许系统通知。仅在额度耗尽且重置时间有效时启用；当前已可用或数据未知时提示刷新后重试。
-
-只有5小时或只有周额度时等待对应恢复；两项都耗尽时等待较晚时间，仍有剩余的窗口不参与等待。到点后约每分钟查询，确认所有已知窗口均有剩余，才发送一次系统通知和提示音，然后自动关闭开关。若等待期间再次耗尽，会继续等到有效恢复。
-
-开启状态跨更新/重启保存；关闭可取消。浮窗运行时即使目标应用不在前台也能检查，断网则保留提醒并重试。休眠会延后至唤醒，工具完全退出期间不能提醒，重新启动后补查；系统通知权限、专注模式和声音设置可能影响通知展示或声音。不调用模型、不消耗对话额度。
-
-## 公网IP与城市
-
-菜单显示“城市名称·IP地址”，仅请求一次 `https://ipinfo.io/json`，同时获取当前请求出口的IP、城市和时区；城市名称按接口返回显示。启动和每5分钟刷新，点击该菜单项可立即重查。IP取不到显示“IP异常”；城市取不到显示“城市未知”。
-
-查询遵循已有HTTPS/ALL代理环境或macOS系统HTTPS代理。这里显示查询服务看到的网络出口；Clash分流时可能与AI请求不同，城市不代表电脑所在地，关闭“跟随IP时区”时不改变时钟时区。不主动保存IP历史，不发送账号凭据。
-
-
-IP地理库的城市与时区可能存在偏差或互相不一致；显示接口返回值，仅校验时区名称有效性，不根据城市猜测时区。
-
-## 跟随IP时区
-
-菜单开启“跟随IP时区”后，时钟按地理接口返回的IANA时区显示当地时间，自动处理夏令时，继续跟随系统12/24小时制；时间下方显示IP返回的城市名称，宽度不超过时间文字；12小时制另在上方显示“凌晨/上午/下午/晚上/深夜”，手动时区选择隐藏。IP每5分钟刷新或点击IP菜单刷新，时区同步更新。
-
-关闭后恢复之前手动选择的城市和时区，并重新显示选择菜单。取不到IP或有效时区时，时钟回退到手动设置的时区，菜单提示“IP时区不可用，显示自定义时间”；开关仍开启，获取成功后继续跟随。开关和手动设置跨重启/更新保存，不保存IP历史。IP地理数据可能不准确，跟随的是出口时区，不修改电脑系统时区。
-
-Codex浮窗为三行：上方9pt五时段小字、中间放大时分、下方城市；城市宽度不超过时间。24小时制不显示时段文字，城市行保留。
-
-## 开机启动与12小时时段
-
-从菜单勾选“开机启动”后，在登录当前macOS用户时自动运行本工具的 `show`，默认关闭，不会自动登录系统或打开官方Codex/Claude应用。关闭仅取消下次登录启动，当前浮窗继续运行。系统若禁止此后台项目，则需在系统设置中允许。
-
-登录配置保存当前Node/npm安装路径，常规原前缀npm更新可继续使用；删除或迁移Node/npm目录后，从新安装打开浮窗并关闭再开启此选项以更新路径。
-
-12小时制时段按时钟所选时区计算；跟随IP时使用有效IP时区，获取失败沿用自定义时间。浮窗、城市菜单和辅助文本使用相同五时段，Codex上方小字独立显示时段，Claude沿用单行时间。零点如“凌晨 00:12”、正午如“下午 12:12”；24小时制不增加时段文字，额度重置时刻继续使用系统格式。
-
-## 状态栏与控制面板
-
-左键点击状态栏图标打开面板，每次打开默认收起。收起只显示额度、当前时间、出口IP以及“更多设置／退出”；点击“更多设置”原位展开全部设置。右键图标或浮窗仍可使用原菜单。
-
-有有效额度时显示中心额度的剩余百分比（Claude优先5小时、缺失时用周；Codex只有周时显示周）；点击面板额度行或兼容菜单可切换中心额度。任何已知总额度耗尽时，状态栏显示耗尽窗口中较晚的恢复倒计时。到点显示“确认中”，需重新查询确认后才切回百分比。未知、过期、缺失恢复时刻或查询失败不伪装为0%、满额或恢复可用。
-
-未登录显示登录指引；点击复制只写入登录命令到剪贴板，不自动打开终端或运行命令。登录过期、查询失败分别显示，不会因为错误文字含“检查登录”就判为未登录。登录应与官方桌面使用同一账号；本工具无法替用户证明两边账号一致。时间、IP与设置不依赖订阅登录。
-
-操作面板采用原生AppKit/SwiftUI，额度查询不调用模型，不新增Node第三方依赖。状态栏持续后台刷新，浮窗仍仅跟随官方应用前台窗口显示。开机启动、提醒和自动更新的原设置继续保留。
+CLI login can expire while the desktop remains signed in. Official service responses and network access determine availability. Notification sound, real logout/reboot and cross-machine multi-monitor behavior need separate acceptance; simulated UI tests do not prove those paths.

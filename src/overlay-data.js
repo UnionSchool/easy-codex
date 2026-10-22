@@ -1,3 +1,4 @@
+import { L } from './language.js';
 import { formatUsage } from './usage.js';
 
 export function overlayData(result, now = Date.now()) {
@@ -13,8 +14,8 @@ export function overlayData(result, now = Date.now()) {
       if (!w) continue;
       const mins = w.windowDurationMins;
       const label = Number.isFinite(mins) && mins > 0
-        ? mins % 1440 === 0 ? `${mins / 1440}天` : mins % 60 === 0 ? `${mins / 60}小时` : `${mins}分钟`
-        : key === 'primary' ? '主窗口' : '次窗口';
+        ? mins % 1440 === 0 ? L(`${mins / 1440}天`, `${mins / 1440}d`) : mins % 60 === 0 ? L(`${mins / 60}小时`, `${mins / 60}h`) : L(`${mins}分钟`, `${mins}m`)
+        : key === 'primary' ? L('主窗口', 'Primary') : L('次窗口', 'Secondary');
       windows.push({ id: `${id}:${key}`, label,
         windowDurationMins: Number.isFinite(mins) && mins > 0 ? mins : null,
         name: `${String(bucket.limitName || id).replace(/[\x00-\x1f\x7f-\x9f]/g, '')} · ${label}`,
@@ -26,6 +27,6 @@ export function overlayData(result, now = Date.now()) {
 }
 
 export function overlayError(error) {
-  return { error: error?.message || '额度查询失败',
+  return { error: error?.message || L('额度查询失败', 'Usage query failed'),
     errorCode: ['auth_required','auth_expired'].includes(error?.code) ? error.code : 'query_failed' };
 }

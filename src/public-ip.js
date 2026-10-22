@@ -1,3 +1,4 @@
+import { L } from './language.js';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { isIP } from 'node:net';
@@ -7,7 +8,7 @@ function systemProxy(text) {
   const host = value('HTTPSProxy');
   const port = Number(value('HTTPSPort'));
   if (!host || !/^[a-zA-Z0-9.:-]+$/.test(host) || !Number.isInteger(port) || port < 1 || port > 65535) {
-    throw new Error('系统 HTTPS 代理配置无效。');
+    throw new Error(L('系统 HTTPS 代理配置无效。', 'Invalid system HTTPS proxy configuration.'));
   }
   return `http://${host.includes(':') ? `[${host}]` : host}:${port}`;
 }
@@ -28,8 +29,8 @@ export async function readPublicIP({ run = promisify(execFile), env = process.en
   };
   let data;
   try { data = JSON.parse(await request('https://ipinfo.io/json')); }
-  catch { throw new Error('IP异常'); }
-  if (!data || typeof data.ip !== 'string' || !isIP(data.ip)) throw new Error('IP异常');
+  catch { throw new Error(L('IP异常', 'IP unavailable')); }
+  if (!data || typeof data.ip !== 'string' || !isIP(data.ip)) throw new Error(L('IP异常', 'IP unavailable'));
   const ip = data.ip;
   let city = null, timezone = null;
   if (typeof data.city === 'string') {

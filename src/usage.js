@@ -1,3 +1,4 @@
+import { L } from './language.js';
 import { readFileSync } from 'node:fs';
 const { version } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 import { spawn } from 'node:child_process';
@@ -6,13 +7,13 @@ import { createInterface } from 'node:readline';
 // 认证交给官方 CLI；不读取凭据文件，也不转发可能含敏感信息的服务端日志。
 export function readUsage({ command = 'codex', args = ['app-server', '--listen', 'stdio://'], timeoutMs = 20000, signal } = {}) {
   return new Promise((resolve, reject) => {
-    if (signal?.aborted) { reject(new Error('查询已取消。')); return; }
+    if (signal?.aborted) { reject(new Error(L('查询已取消。', 'Query cancelled.'))); return; }
     const child = spawn(command, args, { stdio: ['pipe', 'pipe', 'ignore'], shell: false });
     const lines = createInterface({ input: child.stdout });
     let done = false;
     let expectedId = 1;
     let killTimer;
-    const timer = setTimeout(() => finish(new Error('查询超时，请检查网络和 Codex 登录状态。')), timeoutMs);
+    const timer = setTimeout(() => finish(new Error(L('查询超时，请检查网络和 Codex 登录状态。', 'Query timed out. Check the network and Codex login.'))), timeoutMs);
     function finish(error, result) {
       if (done) return;
       done = true;
@@ -26,38 +27,38 @@ export function readUsage({ command = 'codex', args = ['app-server', '--listen',
       if (error) reject(error);
       else resolve(result);
     }
-    function onAbort() { finish(new Error('查询已取消。')); }
+    function onAbort() { finish(new Error(L('查询已取消。', 'Query cancelled.'))); }
     signal?.addEventListener('abort', onAbort, { once: true });
     function send(message) {
       child.stdin.write(`${JSON.stringify(message)}\n`);
     }
     child.on('error', (error) => finish(new Error(error.code === 'ENOENT'
-      ? '找不到 codex，请先安装官方 Codex CLI 并确保它位于 PATH 中。'
-      : '无法启动 Codex CLI，请检查安装和执行权限。')));
-    child.stdin.on('error', () => finish(new Error('Codex 通信中断，请检查 CLI 是否正常。')));
+      ? L('找不到 codex，请先安装官方 Codex CLI 并确保它位于 PATH 中。', 'codex not found. Install the official Codex CLI and add it to PATH.')
+      : L('无法启动 Codex CLI，请检查安装和执行权限。', 'Cannot start Codex CLI. Check installation and execution permissions.'))));
+    child.stdin.on('error', () => finish(new Error(L('Codex 通信中断，请检查 CLI 是否正常。', 'Codex connection closed. Check the CLI.'))));
     child.on('close', () => {
       clearTimeout(killTimer);
-      finish(new Error('Codex 在返回额度前退出，请检查 CLI 版本、配置和登录状态。'));
+      finish(new Error(L('Codex 在返回额度前退出，请检查 CLI 版本、配置和登录状态。', 'Codex exited before returning usage. Check the CLI version, configuration and login.')));
     });
     lines.on('line', (line) => {
       if (done) return;
       let message;
       try { message = JSON.parse(line); }
-      catch { finish(new Error('Codex 返回了无效的协议数据，请检查 CLI 版本。')); return; }
+      catch { finish(new Error(L('Codex 返回了无效的协议数据，请检查 CLI 版本。', 'Invalid Codex protocol data. Check the CLI version.'))); return; }
       if (message?.id !== expectedId) return;
       if (message.error) {
         const authCode = message.error.data?.code ?? message.error.code;
         if (expectedId > 1 && ['token_expired', 'refresh_token_expired', 'refresh_token_reused'].includes(authCode)) {
-          finish(Object.assign(new Error('Codex 登录已过期，请执行 codex login。'), { code: 'auth_expired' }));
+          finish(Object.assign(new Error(L('Codex 登录已过期，请执行 codex login。', 'Codex login expired. Run codex login.')), { code: 'auth_expired' }));
           return;
         }
         finish(new Error(expectedId === 1
-          ? 'Codex 初始化失败，请检查 CLI 版本和配置。'
-          : '无法读取额度，请确认已通过 codex login 登录 ChatGPT，并检查网络；API Key 余额不在本工具范围内。'));
+          ? L('Codex 初始化失败，请检查 CLI 版本和配置。', 'Codex initialization failed. Check the CLI version and configuration.')
+          : L('无法读取额度，请确认已通过 codex login 登录 ChatGPT，并检查网络；API Key 余额不在本工具范围内。', 'Cannot read usage. Run codex login with your ChatGPT account and check the network. API key balances are not supported.')));
         return;
       }
       if (!message.result || typeof message.result !== 'object') {
-        finish(new Error('Codex 返回了无效的结果。'));
+        finish(new Error(L('Codex 返回了无效的结果。', 'Codex returned an invalid result.')));
         return;
       }
       if (expectedId === 1) {
@@ -66,11 +67,11 @@ export function readUsage({ command = 'codex', args = ['app-server', '--listen',
         send({ id: 2, method: 'account/read', params: { refreshToken: false } });
       } else if (expectedId === 2) {
         if (message.result.account === null) {
-          finish(Object.assign(new Error('尚未登录 Codex，请执行 codex login。'), { code: 'auth_required' }));
+          finish(Object.assign(new Error(L('尚未登录 Codex，请执行 codex login。', 'Not signed in to Codex. Run codex login.')), { code: 'auth_required' }));
         } else if (message.result.account && typeof message.result.account === 'object') {
           expectedId = 3;
           send({ id: 3, method: 'account/rateLimits/read' });
-        } else finish(new Error('无法确认 Codex 账号状态，请检查 CLI 版本。'));
+        } else finish(new Error(L('无法确认 Codex 账号状态，请检查 CLI 版本。', 'Cannot verify Codex account status. Check the CLI version.')));
       } else finish(null, message.result);
     });
     send({ id: 1, method: 'initialize', params: {
@@ -82,37 +83,37 @@ export function readUsage({ command = 'codex', args = ['app-server', '--listen',
 
 function duration(minutes, fallback) {
   if (!Number.isFinite(minutes) || minutes <= 0) return fallback;
-  if (minutes % 1440 === 0) return `${minutes / 1440} 天`;
-  if (minutes % 60 === 0) return `${minutes / 60} 小时`;
-  return `${minutes} 分钟`;
+  if (minutes % 1440 === 0) return L(`${minutes / 1440} 天`, `${minutes / 1440} days`);
+  if (minutes % 60 === 0) return L(`${minutes / 60} 小时`, `${minutes / 60} hours`);
+  return L(`${minutes} 分钟`, `${minutes} minutes`);
 }
 
 function windowText(window, label) {
-  if (!window || typeof window !== 'object') return `  ${label}：未知（未提供数据）`;
+  if (!window || typeof window !== 'object') return L(`  ${label}：未知（未提供数据）`, `  ${label}: unknown (no data)`);
   const remaining = Number.isFinite(window.usedPercent)
     ? `${Number(Math.max(0, Math.min(100, 100 - window.usedPercent)).toFixed(1))}%`
-    : '未知';
+    : L('未知', 'Unknown');
   const date = Number.isFinite(window.resetsAt) ? new Date(window.resetsAt * 1000) : null;
-  const reset = date && Number.isFinite(date.getTime()) ? date.toLocaleString('zh-CN', { hour12: false }) : '未知';
-  return `  ${duration(window.windowDurationMins, label)}：剩余 ${remaining}；重置 ${reset}`;
+  const reset = date && Number.isFinite(date.getTime()) ? date.toLocaleString() : L('未知', 'Unknown');
+  return L(`  ${duration(window.windowDurationMins, label)}：剩余 ${remaining}；重置 ${reset}`, `  ${duration(window.windowDurationMins, label)}: ${remaining} left; resets ${reset}`);
 }
 
 export function formatUsage(result) {
-  if (!result || typeof result !== 'object') throw new Error('额度响应格式无效。');
+  if (!result || typeof result !== 'object') throw new Error(L('额度响应格式无效。', 'Invalid usage response.'));
   const buckets = result.rateLimitsByLimitId;
   const entries = buckets && typeof buckets === 'object' && !Array.isArray(buckets)
     ? Object.entries(buckets).filter(([, value]) => value && typeof value === 'object') : [];
   if (!entries.length && result.rateLimits && typeof result.rateLimits === 'object') {
     entries.push([result.rateLimits.limitId ?? 'codex', result.rateLimits]);
   }
-  if (!entries.length) throw new Error('服务端未提供额度数据，无法判断剩余额度。');
-  const output = ['Codex 剩余额度（账号共享，非当前会话）'];
+  if (!entries.length) throw new Error(L('服务端未提供额度数据，无法判断剩余额度。', 'The server returned no usage limits. Remaining usage is unknown.'));
+  const output = [L('Codex 剩余额度（账号共享，非当前会话）', 'Codex remaining usage (shared account, not this session)')];
   for (const [id, bucket] of entries) {
     // 限制服务端标签中的控制字符，避免终端转义序列影响显示。
     const label = String(bucket.limitName || bucket.limitId || id).replace(/[\x00-\x1f\x7f-\x9f]/g, '');
-    output.push(label, windowText(bucket.primary, '主窗口'), windowText(bucket.secondary, '次窗口'));
+    output.push(label, windowText(bucket.primary, L('主窗口', 'Primary')), windowText(bucket.secondary, L('次窗口', 'Secondary')));
   }
-  if (result.ordinaryUsageAllowed === false) output.push('服务端提示：当前普通额度使用受限。');
-  output.push(`重置时间使用本机时区：${Intl.DateTimeFormat().resolvedOptions().timeZone}`);
+  if (result.ordinaryUsageAllowed === false) output.push(L('服务端提示：当前普通额度使用受限。', 'Server reports restricted usage.'));
+  output.push(L(`重置时间使用本机时区：${Intl.DateTimeFormat().resolvedOptions().timeZone}`, `Reset times use the local time zone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}`));
   return output.join('\n');
 }
