@@ -4,14 +4,14 @@
 
 A lightweight companion for Codex: read CLI account usage, show transparent usage rings and a world clock, and manage them from a native macOS menu bar panel. No model calls or changes to the official application.
 
-## v1.0.2 release notes
+## v1.0.3 release notes
 
-- Chinese/English UI and CLI, following the system by default; save a manual language choice in **More settings → Language**.
-- English README by default, with a linked Simplified Chinese version.
-- Time first, with a half-size period suffix (`10:09 AM` / `10:09 上午`) and the city below; preserve the system 12/24-hour format.
-- Consistent settings row heights and spacing in both languages.
+- Refresh usage every five minutes; keep one-minute online confirmation when a reset or availability alert is due.
+- Keep usage valid between polls with a ten-minute stale-data threshold; errors and expired windows remain explicit.
+- Place the floating clock day period above the time and the city below. Keep its existing size and position; 24-hour mode has no day-period label.
+- Verify background quota refresh with isolated continuous-typing and marked-text checks; do not activate the official application.
 
-[Release history](CHANGELOG.md) · [1.0.2 development and verification](https://github.com/UnionSchool/easy-codex/blob/main/docs/版本/1.0.2开发管理.md)
+[Release history](CHANGELOG.md) · [1.0.3 development and verification](https://github.com/UnionSchool/easy-codex/blob/main/docs/版本/1.0.3开发管理.md)
 
 ## Install and run
 
@@ -34,7 +34,7 @@ codex login
 
 CLI and desktop login are separate. This tool cannot verify that their accounts match. Missing or stale data is never treated as full or zero usage. API key balances and current conversation context are outside its scope.
 
-Usage refreshes every minute while the tool is running.
+Usage refreshes every five minutes while the tool is running; due resets and availability alerts are confirmed once per minute.
 
 ## Usage rings and recovery
 
@@ -48,7 +48,7 @@ Drag the clock and rings independently. **Reset position** restores their defaul
 
 The default city is Silicon Valley (`America/Los_Angeles`). Presets, in order: Silicon Valley, Los Angeles, Seattle, Washington, D.C., Columbus, Ohio, Singapore and Shanghai. Custom IANA time zones are supported. Daylight saving follows the selected zone; the computer time zone is never changed.
 
-The clock has no seconds and follows the system 12/24-hour format. Colors use the selected zone: red 00:00–09:00, green 09:00–18:00, orange 18:00–24:00. Midnight remains `00:mm` in 12-hour mode. Chinese uses five day-period labels; English uses AM/PM. In the floating clock, time comes first (`10:09 AM`), with the period at half the numeric font size; the city remains below. The city below the clock fits within the time's width.
+The clock has no seconds and follows the system 12/24-hour format. Colors use the selected zone: red 00:00–09:00, green 09:00–18:00, orange 18:00–24:00. Midnight remains `00:mm` in 12-hour mode. Chinese uses five day-period labels; English uses AM/PM. In the floating clock, the half-size day period is above the time and the city is below. The city below the clock fits within the time's width.
 
 ## Interface language
 

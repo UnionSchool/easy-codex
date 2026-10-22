@@ -1,6 +1,6 @@
 {
   "name": "easy-codex",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Codex usage limits and transparent world clock overlay",
   "type": "module",
   "bin": {
@@ -26,7 +26,9 @@
     "test:native": "python3 scripts/test-native-update.py",
     "test:lock": "python3 scripts/test-native-lock.py",
     "test:reminder": "python3 scripts/test-native-reminder.py",
-    "test:controls": "python3 scripts/test-controls.py"
+    "test:controls": "python3 scripts/test-controls.py",
+    "test:focus": "python3 scripts/test-focus.py",
+    "test:polling": "python3 scripts/test-polling.py"
   },
   "license": "MIT",
   "author": "UnionSchool",

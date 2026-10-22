@@ -77,9 +77,9 @@ entry=r'''
    let zone = TimeZone(secondsFromGMT:0)!
    for width: CGFloat in [48, 96] {
     let line = floatingClockText(at:date,zone:zone,width:width,baseSize:20,locale:Locale(identifier:"en_US"))
-    precondition(line.text.string == (language == "zh" ? "10:09 上午" : "10:09 AM"))
-    let large = line.text.attribute(.font,at:0,effectiveRange:nil) as! NSFont
-    let small = line.text.attribute(.font,at:line.text.length-1,effectiveRange:nil) as! NSFont
+    precondition(line.text.string == (language == "zh" ? "上午\n10:09" : "AM\n10:09"))
+    let large = line.text.attribute(.font,at:line.text.length-1,effectiveRange:nil) as! NSFont
+    let small = line.text.attribute(.font,at:0,effectiveRange:nil) as! NSFont
     precondition(small.pointSize * 2 == large.pointSize && line.text.size().width <= width)
     precondition(!floatingClockText(at:date,zone:zone,width:width,baseSize:20,locale:Locale(identifier:"en_GB")).text.string.contains("AM"))
    }
@@ -90,7 +90,7 @@ entry=r'''
    try bitmap.representation(using:.png,properties:[:])!.write(to:URL(fileURLWithPath:CommandLine.arguments[1]+"/"+language+"-clock.png"))
   }
   owner.setLanguage("zh")
-  print("PASS language persistence, settings retention and half-size clock suffix")
+  print("PASS language persistence, settings retention and half-size clock period above time")
   let oldClock = owner.clockEnabled
   owner.toggleClock()
   precondition(owner.clockEnabled != oldClock && UserDefaults.standard.bool(forKey:"clockEnabled") == owner.clockEnabled)

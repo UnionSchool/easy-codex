@@ -1,5 +1,12 @@
 # 更新记录
 
+## 1.0.3
+
+- Refresh usage every five minutes; keep one-minute online confirmation when a reset or availability alert is due.
+- Keep usage valid between polls with a ten-minute stale-data threshold; errors and expired windows remain explicit.
+- Place the floating clock day period above the time and the city below. Keep its existing size and position; 24-hour mode has no day-period label.
+- Verify background quota refresh with isolated continuous-typing and marked-text checks; do not activate the official application.
+
 ## 1.0.2
 
 - Add Chinese/English interface and CLI text, following the system by default with a saved manual language choice.

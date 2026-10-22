@@ -414,7 +414,10 @@ func floatingClockText(at date: Date, zone: TimeZone, width: CGFloat, baseSize: 
         numericWidth = (parts.time as NSString).size(withAttributes: [.font: font]).width
         let line = NSMutableAttributedString(string: parts.time, attributes: [.font: font, .foregroundColor: clockState(at: date, zone: zone).color])
         if let period = parts.period {
-            line.append(NSAttributedString(string: " " + period, attributes: [.font: NSFont.systemFont(ofSize: size / 2, weight: .medium), .foregroundColor: NSColor.secondaryLabelColor]))
+            line.insert(NSAttributedString(string: period + "\n", attributes: [.font: NSFont.systemFont(ofSize: size / 2, weight: .medium), .foregroundColor: NSColor.secondaryLabelColor]), at: 0)
+            let paragraph = NSMutableParagraphStyle()
+            paragraph.alignment = .center
+            line.addAttribute(.paragraphStyle, value: paragraph, range: NSRange(location: 0, length: line.length))
         }
         result = line
         if result.size().width <= width { break }
@@ -431,7 +434,7 @@ final class ClockView: RingView {
         let style = NSMutableParagraphStyle()
         style.alignment = .center
         let line = floatingClockText(at: Date(), zone: zone, width: bounds.width, baseSize: 18)
-        line.text.draw(at: NSPoint(x: (bounds.width - line.text.size().width) / 2, y: 17))
+        line.text.draw(at: NSPoint(x: (bounds.width - line.text.size().width) / 2, y: line.text.string.contains("\n") ? 13 : 17))
         let city = cityLabel(cityName)
         (city as NSString).draw(in: CGRect(x: 0, y: 1, width: bounds.width, height: 15),
             withAttributes: [.font: fittedClockFont(for: city, width: line.timeWidth, baseSize: 9),
@@ -513,7 +516,8 @@ enum LoginStartup {
 let controlProduct = "Codex"
 let controlLoginName = "Codex"
 let controlLoginCommand = "codex login"
-let controlStaleSeconds: Double = 120
+let usageRefreshInterval: TimeInterval = 300
+let controlStaleSeconds: Double = usageRefreshInterval * 2
 func controlQuotas(_ windows: [UsageWindow]) -> [ControlQuota] { return [codexWindow(windows, minutes: 300).map { ControlQuota(window: $0, weekly: false) }, codexWindow(windows, minutes: 10080).map { ControlQuota(window: $0, weekly: true) }].compactMap { $0 } }
 
 struct ControlQuota: Identifiable {
@@ -948,9 +952,10 @@ final class Overlay: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUserNoti
     @objc func tick() {
         checkVersionIfNeeded()
         if Date().timeIntervalSince(ipLastAttempt) >= 300 { refreshIP() }
-        if let reminder, Date().timeIntervalSince(lastAttempt) >= (Date().timeIntervalSince1970 >= reminder.due ? 60 : 300) { refresh() }
-        let resetDue = snapshot?.windows.contains { $0.resetsAt.map { $0 <= Date().timeIntervalSince1970 } ?? false } ?? false
-        if Date().timeIntervalSince(lastAttempt) >= 60 || (resetDue && Date().timeIntervalSince(lastAttempt) >= 60) { refresh() }
+        let now = Date()
+        let resetDue = snapshot?.windows.contains { $0.resetsAt.map { $0 <= now.timeIntervalSince1970 } ?? false } ?? false
+        let reminderDue = reminder.map { $0.due <= now.timeIntervalSince1970 } ?? false
+        if now.timeIntervalSince(lastAttempt) >= (resetDue || reminderDue ? 60 : usageRefreshInterval) { refresh() }
         refreshControls()
         guard let rect = targetWindow() else { hide(); lastRect = nil; return }
         lastRect = rect
@@ -967,7 +972,6 @@ final class Overlay: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUserNoti
         } else { clockPanel.orderOut(nil) }
         if !ring.dragging { panel.setFrameOrigin(ringOrigin(in: rect, inset: inset)) }
         if !panel.isVisible { panel.orderFrontRegardless() }
-        if Date().timeIntervalSince(lastAttempt) >= 60 { refresh() }
         updateRing()
     }
     func updateRing() {
@@ -975,7 +979,7 @@ final class Overlay: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUserNoti
         let weekly = codexWindow(windows, minutes: 10080)
         let fiveHour = codexWindow(windows, minutes: 300)
         let now = Date().timeIntervalSince1970
-        let snapshotStale = error != nil || snapshot == nil || now - (snapshot?.fetchedAt ?? 0) > 120
+        let snapshotStale = error != nil || snapshot == nil || now - (snapshot?.fetchedAt ?? 0) > controlStaleSeconds
         func stale(_ window: UsageWindow?) -> Bool {
             snapshotStale || window?.remaining == nil || (window?.resetsAt.map { $0 <= now } ?? false)
         }
@@ -1087,7 +1091,7 @@ final class Overlay: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUserNoti
             return
         }
         let now = Date().timeIntervalSince1970
-        guard error == nil, let snapshot, now - snapshot.fetchedAt <= 120,
+        guard error == nil, let snapshot, now - snapshot.fetchedAt <= controlStaleSeconds,
               let candidate = AvailabilityReminder.arm(reminderWindows(snapshot.windows), now: now) else {
             reminderError = L("当前额度可用，或缺少有效额度/重置时间；请刷新后重试", "Usage is available, or usage/reset data is missing. Refresh and try again.")
             refresh(); return
