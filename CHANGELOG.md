@@ -1,5 +1,10 @@
 # 更新记录
 
+## 1.3.0
+
+- Add a persistent, editable Subscription day (1–31 or Not set) below automatic usage refresh, visible with settings collapsed.
+- Add an explicit automatic usage refresh switch, off by default; retain manual refresh, in-flight queries and 300/60-second scheduling when enabled.
+
 ## 1.0.3
 
 - Refresh usage every five minutes; keep one-minute online confirmation when a reset or availability alert is due.

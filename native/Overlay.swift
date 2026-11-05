@@ -646,6 +646,9 @@ struct ControlPanelView: View {
                         }
                     }
                     Divider()
+                    setting(L("额度自动刷新", "Automatic usage refresh"), value: owner.automaticUsageRefresh) { owner.toggleAutomaticUsageRefresh() }
+                    subscription
+                    Divider()
                     HStack(spacing: 7) {
                         Image(systemName: "clock").foregroundStyle(.secondary)
                         let clockParts = floatingClockLines(at: Date(), zone: owner.clock.zone)
@@ -685,6 +688,19 @@ struct ControlPanelView: View {
         .background(Color(red: 0.09, green: 0.11, blue: 0.13))
         .preferredColorScheme(.dark)
         .lineSpacing(2)
+    }
+    var subscription: some View {
+        HStack {
+            Text(L("订阅日期", "Subscription day")).font(.system(size: 12))
+            Spacer()
+            Picker(L("订阅日期", "Subscription day"), selection: Binding(
+                get: { owner.subscriptionDay }, set: { owner.setSubscriptionDay($0) })) {
+                Text(L("未设置", "Not set")).tag(0)
+                ForEach(1...31, id: \.self) { day in Text(L("\(day)日", "Day \(day)")).tag(day) }
+            }
+            .labelsHidden().frame(width: 110).controlSize(.small)
+            .accessibilityIdentifier("subscriptionDay")
+        }.frame(minHeight: 20)
     }
     func iconButton(_ label: String, _ image: String, action: @escaping () -> Void) -> some View {
         Button(action: action) { Image(systemName: image).frame(width: 20, height: 20) }
@@ -800,6 +816,12 @@ final class Overlay: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUserNoti
     var ipClockCity: String?
     var manualClockZone = TimeZone(identifier: "America/Los_Angeles")!
     var manualClockCity = "硅谷"
+    // 仅记录用户指定的每月日期，不读取账号账单或据此推算额度重置。
+    @Published var subscriptionDay: Int = {
+        let day = UserDefaults.standard.integer(forKey: "subscriptionDay")
+        return (1...31).contains(day) ? day : 0
+    }()
+    @Published var automaticUsageRefresh = UserDefaults.standard.bool(forKey: "automaticUsageRefresh")
     @Published var controlRevision = 0
     let controlPopover = NSPopover()
     var controlsExpanded = false
@@ -807,7 +829,7 @@ final class Overlay: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUserNoti
     var controlHeight: CGFloat {
         let state = currentControlState()
         let quotaHeight: CGFloat = state.login ? 155 : CGFloat(max(1, state.quotas.count)) * 62 + (state.mode == "ready" ? 0 : 65)
-        let total: CGFloat = 199 + quotaHeight + (controlsExpanded ? (followIPTimeZone ? 355 : 420) : 0)
+        let total: CGFloat = 263 + quotaHeight + (controlsExpanded ? (followIPTimeZone ? 355 : 420) : 0)
         return min(total, max(280, (status?.button?.window?.screen?.visibleFrame.height ?? NSScreen.main?.visibleFrame.height ?? 900) - 65))
     }
     var status: NSStatusItem?
@@ -920,6 +942,11 @@ final class Overlay: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUserNoti
         status?.button?.setAccessibilityLabel("Easy \(controlProduct) \(state.headline) \(state.text)")
         if controlPopover.isShown { resizeControls() }
     }
+    func setSubscriptionDay(_ day: Int) {
+        guard (0...31).contains(day) else { return }
+        subscriptionDay = day
+        UserDefaults.standard.set(day, forKey: "subscriptionDay")
+    }
     func setLanguage(_ value: String) {
         guard AppLanguage(rawValue: value) != nil else { return }
         UserDefaults.standard.set(value, forKey: "interfaceLanguage")
@@ -952,10 +979,12 @@ final class Overlay: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUserNoti
     @objc func tick() {
         checkVersionIfNeeded()
         if Date().timeIntervalSince(ipLastAttempt) >= 300 { refreshIP() }
-        let now = Date()
-        let resetDue = snapshot?.windows.contains { $0.resetsAt.map { $0 <= now.timeIntervalSince1970 } ?? false } ?? false
-        let reminderDue = reminder.map { $0.due <= now.timeIntervalSince1970 } ?? false
-        if now.timeIntervalSince(lastAttempt) >= (resetDue || reminderDue ? 60 : usageRefreshInterval) { refresh() }
+        if automaticUsageRefresh {
+            let now = Date()
+            let resetDue = snapshot?.windows.contains { $0.resetsAt.map { $0 <= now.timeIntervalSince1970 } ?? false } ?? false
+            let reminderDue = reminder.map { $0.due <= now.timeIntervalSince1970 } ?? false
+            if now.timeIntervalSince(lastAttempt) >= (resetDue || reminderDue ? 60 : usageRefreshInterval) { refresh() }
+        }
         refreshControls()
         guard let rect = targetWindow() else { hide(); lastRect = nil; return }
         lastRect = rect
@@ -997,6 +1026,11 @@ final class Overlay: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUserNoti
         ring.toolTip = "Codex CLI\n" + summary + "\n" + currentControlState().headline
         ring.setAccessibilityLabel("Codex \(summary)")
         ring.needsDisplay = true
+    }
+    @objc func toggleAutomaticUsageRefresh() {
+        automaticUsageRefresh.toggle()
+        UserDefaults.standard.set(automaticUsageRefresh, forKey: "automaticUsageRefresh")
+        if automaticUsageRefresh { refresh() }
     }
     @objc func refresh() {
         guard query == nil else { return }
@@ -1173,6 +1207,9 @@ final class Overlay: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUserNoti
             menu.addItem(option)
         }
         menu.addItem(item(query == nil ? L("立即刷新", "Refresh now") : L("正在刷新…", "Refreshing…"), query == nil ? #selector(refresh) : nil))
+        let automaticUsage = item(L("额度自动刷新", "Automatic usage refresh"), #selector(toggleAutomaticUsageRefresh))
+        automaticUsage.state = automaticUsageRefresh ? .on : .off
+        menu.addItem(automaticUsage)
         let alarm = item(L("额度可用提醒", "Usage available alert"), reminderAuthorizing ? nil : #selector(toggleReminder))
         alarm.state = reminder == nil ? .off : .on
         menu.addItem(alarm)

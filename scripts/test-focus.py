@@ -96,7 +96,7 @@ probe_entry = r'''
 @main struct Main {
  @MainActor static func main() {
   let app = NSApplication.shared;app.setActivationPolicy(.accessory)
-  let owner = Overlay();app.delegate = owner
+  let owner = Overlay();owner.automaticUsageRefresh = true;app.delegate = owner
   owner.ipLastAttempt = Date()
   UserDefaults.standard.set(owner.appVersion,forKey:"updateCheckedVersion")
   UserDefaults.standard.set(Date().timeIntervalSince1970,forKey:"updateLastAttempt")

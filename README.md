@@ -4,14 +4,13 @@
 
 A lightweight companion for Codex: read CLI account usage, show transparent usage rings and a world clock, and manage them from a native macOS menu bar panel. No model calls or changes to the official application.
 
-## v1.0.3 release notes
+## v1.3.0 release notes
 
-- Refresh usage every five minutes; keep one-minute online confirmation when a reset or availability alert is due.
-- Keep usage valid between polls with a ten-minute stale-data threshold; errors and expired windows remain explicit.
-- Place the floating clock day period above the time and the city below. Keep its existing size and position; 24-hour mode has no day-period label.
-- Verify background quota refresh with isolated continuous-typing and marked-text checks; do not activate the official application.
+- Add a persistent Subscription day row below Automatic usage refresh, visible with settings collapsed. Select day 1–31 or Not set.
+- Subscription day is a personal note; it does not read billing or change usage resets.
+- Add an automatic usage refresh switch, off by default. Enabling refreshes immediately, then every 300 seconds or every 60 seconds after a reset/due alert. Disabling keeps manual refresh and in-flight queries.
 
-[Release history](CHANGELOG.md) · [1.0.3 development and verification](https://github.com/UnionSchool/easy-codex/blob/main/docs/版本/1.0.3开发管理.md)
+[Release history](CHANGELOG.md) · [1.3.0 verification](docs/版本/1.3.0开发管理.md)
 
 ## Install and run
 
@@ -34,7 +33,7 @@ codex login
 
 CLI and desktop login are separate. This tool cannot verify that their accounts match. Missing or stale data is never treated as full or zero usage. API key balances and current conversation context are outside its scope.
 
-Usage refreshes every five minutes while the tool is running; due resets and availability alerts are confirmed once per minute.
+Automatic usage refresh is off by default. Enable it for five-minute polling and one-minute confirmation after due resets or alerts; disable it for manual refresh only.
 
 ## Usage rings and recovery
 
@@ -103,3 +102,9 @@ A matching `v<version>` tag triggers GitHub Actions validation, universal build 
 CLI login can expire while the desktop remains signed in. Official service responses and network access determine availability. Notification sound, real logout/reboot and cross-machine multi-monitor behavior need separate acceptance; simulated UI tests do not prove those paths.
 
 [Version management](https://github.com/UnionSchool/easy-codex/blob/main/docs/版本/README.md)
+
+## Subscription day
+
+A Subscription day row below Automatic usage refresh stays visible with settings collapsed. Choose day 1–31 or Not set; each tool saves its own value. This is a personal note, not a billing lookup or usage reset.
+
+Automatic usage refresh is now an explicit switch, off by default. Enabling refreshes immediately, then every 300 seconds or every 60 seconds after a reset or due alert. Disabling keeps manual refresh and any in-flight query. IP checks and the clock remain independent.

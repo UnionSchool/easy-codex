@@ -8,6 +8,7 @@ entry=r'''
  @MainActor static func main() throws {
   _ = NSApplication.shared
   let owner = Overlay()
+  owner.automaticUsageRefresh=false
   owner.node=CommandLine.arguments[1];owner.script=CommandLine.arguments[2]
   owner.searchPath=ProcessInfo.processInfo.environment["PATH"] ?? ""
   owner.ipLastAttempt=Date();owner.versionCheck=Process();owner.reminderSending=true
@@ -34,19 +35,32 @@ entry=r'''
    precondition(owner.query == nil)
    precondition(NSWorkspace.shared.frontmostApplication?.processIdentifier == front)
   }
+  check(86400,due:false,shouldQuery:false)
+  check(86400,due:true,shouldQuery:false)
+  check(86400,due:false,shouldQuery:false,reminder:true)
+  owner.automaticUsageRefresh=true
   check(299,due:false,shouldQuery:false)
   check(301,due:false,shouldQuery:true)
   check(59,due:true,shouldQuery:false)
   check(61,due:true,shouldQuery:true)
   check(59,due:false,shouldQuery:false,reminder:true)
   check(61,due:false,shouldQuery:true,reminder:true)
+  owner.automaticUsageRefresh=false
+  owner.reminder=nil
+  owner.refresh()
+  precondition(owner.query != nil, "关闭自动刷新仍须支持手动刷新")
+  let firstQuery=owner.query
+  owner.refresh();precondition(owner.query === firstQuery, "查询不得重叠")
+  let deadline=Date().addingTimeInterval(5)
+  while owner.query != nil && Date()<deadline { RunLoop.main.run(until:Date().addingTimeInterval(0.02)) }
+  precondition(owner.query == nil)
   owner.reminder=nil;owner.snapshot!.windows=[row]
   owner.snapshot!.fetchedAt=Date().timeIntervalSince1970-599
   owner.error=nil
   precondition(owner.currentControlState().mode == "ready")
   owner.snapshot!.fetchedAt=Date().timeIntervalSince1970-601
   precondition(owner.currentControlState().mode == "unknown")
-  print("PASS actual tick: normal 299/301s, reset/reminder 59/61s, stale 599/601s; no foreground change")
+  print("PASS actual tick: off never polls, manual and overlap; on normal 299/301s, reset/reminder 59/61s, stale 599/601s; no foreground change")
  }
 }
 '''
