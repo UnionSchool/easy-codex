@@ -1,5 +1,9 @@
 # 更新记录
 
+## 1.3.1
+
+- Show the running app version beside More settings / Less settings, including the collapsed panel.
+
 ## 1.3.0
 
 - Add a persistent, editable Subscription day (1–31 or Not set) below automatic usage refresh, visible with settings collapsed.

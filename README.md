@@ -4,13 +4,12 @@
 
 A lightweight companion for Codex: read CLI account usage, show transparent usage rings and a world clock, and manage them from a native macOS menu bar panel. No model calls or changes to the official application.
 
-## v1.3.0 release notes
+## v1.3.1 release notes
 
-- Add a persistent Subscription day row below Automatic usage refresh, visible with settings collapsed. Select day 1–31 or Not set.
-- Subscription day is a personal note; it does not read billing or change usage resets.
-- Add an automatic usage refresh switch, off by default. Enabling refreshes immediately, then every 300 seconds or every 60 seconds after a reset/due alert. Disabling keeps manual refresh and in-flight queries.
+- Show the running app version beside More settings / Less settings, including the collapsed panel.
+- Keep existing settings, usage refresh and clock behavior unchanged.
 
-[Release history](CHANGELOG.md) · [1.3.0 verification](docs/版本/1.3.0开发管理.md)
+[Release history](CHANGELOG.md) · [1.3.1 verification](docs/版本/1.3.1开发管理.md)
 
 ## Install and run
 

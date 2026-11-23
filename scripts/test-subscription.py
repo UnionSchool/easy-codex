@@ -72,6 +72,7 @@ with tempfile.TemporaryDirectory(prefix='easy-subscription-') as temporary:
     binary.parent.mkdir(parents=True)
     (app / 'Contents/Info.plist').write_bytes(plistlib.dumps({
         'CFBundleIdentifier': domain, 'CFBundleExecutable':'subscription-checks',
+        'CFBundleShortVersionString':json.loads((root / 'package.json').read_text())['version'],
         'CFBundlePackageType':'APPL', 'LSUIElement':True}))
     query = work / 'query.cjs'
     query.write_text('setTimeout(()=>console.log(JSON.stringify({windows:[],fetchedAt:Date.now()/1000})),100)')

@@ -679,6 +679,8 @@ struct ControlPanelView: View {
                     Label(owner.controlsExpanded ? L("收起设置", "Less settings") : L("更多设置", "More settings"), systemImage: "gearshape")
                 }
                 .buttonStyle(.plain).accessibilityIdentifier("moreSettings")
+                Text("v\(owner.appVersion)").font(.system(size: 11)).foregroundStyle(.secondary)
+                    .accessibilityIdentifier("appVersion")
                 Spacer()
                 Divider().frame(height: 17)
                 Button { owner.quit() } label: { Label(L("退出", "Quit"), systemImage: "power") }.buttonStyle(.plain)
