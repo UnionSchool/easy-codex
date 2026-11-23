@@ -77,7 +77,7 @@
 - ControlState统一状态栏与面板：有效额度显示所选窗口百分比；任一已知总窗口耗尽取耗尽窗口较晚重置；到期确认中；缺失/过期/错误不显示旧数字。额度自动刷新以automaticUsageRefresh持久化，默认关闭；开启即查、正常300秒/到期确认60秒，关闭仅手动且不取消在途请求，查询不重叠。
 - Snapshot新增可选errorCode，仅接受auth_required/auth_expired；普通错误为query_failed。Codex先account/read确认空账号后才判未登录，明确协议认证过期码才判过期；Claude缺凭据/过期/401明确分类，403不得当作未登录。复制命令不自动运行，不读取或转发额外认证数据。
 - npm run test:controls在隔离测试Bundle偏好域内编译实际ControlPanelView并绘制八类状态，生成native/build/control-previews（不进入npm包）；覆盖已有设置动作及实际按钮操作。CI与发布工作流必须执行；测试失败不得跳过或削弱。
-- 本版管理文件docs/版本/1.3.0开发管理.md持续区分本机完成、已发布和待验收；默认只交付Markdown。
+- 本版管理文件docs/版本/1.3.1开发管理.md持续区分本机完成、已发布和待验收；默认只交付Markdown。
 
 ## 中英文与文档
 
