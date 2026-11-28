@@ -4,12 +4,12 @@
 
 A lightweight companion for Codex: read CLI account usage, show transparent usage rings and a world clock, and manage them from a native macOS menu bar panel. No model calls or changes to the official application.
 
-## v1.3.1 release notes
+## v1.3.2 release notes
 
-- Show the running app version beside More settings / Less settings, including the collapsed panel.
-- Keep existing settings, usage refresh and clock behavior unchanged.
+- Switch public IP lookup to `https://ipwho.is/` with fallbacks to `https://get.geojs.io/v1/ip/geo.json` and `https://ifconfig.co/json`, avoiding overlap with `easy-claude` IP checks on the same machine.
+- Keep existing settings, usage refresh, version display and clock behavior unchanged.
 
-[Release history](CHANGELOG.md) · [1.3.1 verification](docs/版本/1.3.1开发管理.md)
+[Release history](CHANGELOG.md)
 
 ## Install and run
 
@@ -56,7 +56,7 @@ The CLI uses the same saved preference. `EASY_LANGUAGE=en` or `EASY_LANGUAGE=zh`
 
 ## Network exit and IP time zone
 
-A single request to `https://ipinfo.io/json` reads the public IP, city and IANA time zone. The panel displays `City·IP`, refreshing at startup, every five minutes or on demand. A failed lookup shows an explicit error rather than an old IP. IP history is not saved.
+A request to `https://ipwho.is/` (falling back to `https://get.geojs.io/v1/ip/geo.json` and `https://ifconfig.co/json`) reads the public IP, city and IANA time zone. The panel displays `City·IP`, refreshing at startup, every five minutes or on demand. A failed lookup shows an explicit error rather than an old IP. IP history is not saved.
 
 **Follow IP time zone** is off by default. Enable it to hide manual zone choices and use the validated IP time zone and returned city. Failed lookups temporarily restore the saved manual time; successful lookups resume following. Disable it to restore manual choices. Proxy routing can make this exit differ from AI traffic; geolocation may be inaccurate or rate-limited.
 

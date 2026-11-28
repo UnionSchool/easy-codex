@@ -1,5 +1,9 @@
 # 更新记录
 
+## 1.3.2
+
+- Switch public IP lookup to `https://ipwho.is/` (with fallbacks to `https://get.geojs.io/v1/ip/geo.json` and `https://ifconfig.co/json`) so Codex IP detection stays separate from `easy-claude`.
+
 ## 1.3.1
 
 - Show the running app version beside More settings / Less settings, including the collapsed panel.

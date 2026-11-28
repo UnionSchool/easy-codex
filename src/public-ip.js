@@ -14,6 +14,19 @@ function systemProxy(text) {
 }
 
 
+export const PUBLIC_IP_URLS = [
+  'https://ipwho.is/',
+  'https://get.geojs.io/v1/ip/geo.json',
+  'https://ifconfig.co/json'
+];
+
+function extractTimeZone(data) {
+  if (typeof data?.timezone === 'string') return data.timezone;
+  if (typeof data?.timezone?.id === 'string') return data.timezone.id;
+  if (typeof data?.time_zone === 'string') return data.time_zone;
+  return null;
+}
+
 export async function readPublicIP({ run = promisify(execFile), env = process.env, platform = process.platform } = {}) {
   let proxy = env.https_proxy || env.HTTPS_PROXY || env.all_proxy || env.ALL_PROXY;
   if (!proxy && platform === 'darwin') {
@@ -27,19 +40,27 @@ export async function readPublicIP({ run = promisify(execFile), env = process.en
     });
     return stdout;
   };
-  let data;
-  try { data = JSON.parse(await request('https://ipinfo.io/json')); }
-  catch { throw new Error(L('IP异常', 'IP unavailable')); }
-  if (!data || typeof data.ip !== 'string' || !isIP(data.ip)) throw new Error(L('IP异常', 'IP unavailable'));
+  let data = null;
+  for (const url of PUBLIC_IP_URLS) {
+    try {
+      const parsed = JSON.parse(await request(url));
+      if (parsed && parsed.success !== false && typeof parsed.ip === 'string' && isIP(parsed.ip)) {
+        data = parsed;
+        break;
+      }
+    } catch { /* 尝试下一个备用 IP 接口。 */ }
+  }
+  if (!data) throw new Error(L('IP异常', 'IP unavailable'));
   const ip = data.ip;
   let city = null, timezone = null;
   if (typeof data.city === 'string') {
     city = data.city.replace(/[\x00-\x1f\x7f-\x9f]/g, ' ').trim().slice(0, 60) || null;
   }
-  if (typeof data.timezone === 'string' && data.timezone.length <= 100) {
+  const rawZone = extractTimeZone(data);
+  if (typeof rawZone === 'string' && rawZone.length <= 100) {
     try {
-      new Intl.DateTimeFormat('en', { timeZone: data.timezone });
-      timezone = data.timezone;
+      new Intl.DateTimeFormat('en', { timeZone: rawZone });
+      timezone = rawZone;
     } catch { /* 无效时区保持未知，不改用电脑时区。 */ }
   }
   return { ip, city, timezone };
